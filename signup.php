@@ -52,10 +52,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         setcookie("user_nom", $prenom . " " . $nom, time() + 86400, "/");
         setcookie("user_role", $role, time() + 86400, "/");
 
-        //ici à la place de signup.php ca sera captcha.php
+        //ici après sign up on sera dirigé vers captcha.php
         echo "<script>
             alert('Inscription réussie ! Bienvenue $prenom.');
-            window.location.href = 'signup.php'; 
+            window.location.href = 'captcha.php'; 
         </script>";
     } else {
         echo "<script>alert('Erreur lors de l\\'inscription: " . addslashes($stmt->error) . "'); window.history.back();</script>";
