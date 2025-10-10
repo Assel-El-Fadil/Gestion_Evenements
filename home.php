@@ -9,20 +9,20 @@ $user_clubs = get_user_clubs($current_user_id, 2);
 ?>
 
 
-<html lang="en">
+<html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ClubConnect - Student Dashboard</title>
+    <title>ClubConnect - Tableau de Bord</title>
     <link rel="stylesheet" href="home.css">
 </head>
 <body>
     <div class="dashboard">
-        <!-- Sidebar -->
+        <!-- Barre latérale -->
         <aside class="sidebar">
             <div class="sidebar-header">
                 <h1 class="sidebar-title">ClubConnect</h1>
-                <p class="sidebar-subtitle">Student Dashboard</p>
+                <p class="sidebar-subtitle">Tableau de Bord Étudiant</p>
             </div>
             
             <nav class="sidebar-nav">
@@ -31,14 +31,14 @@ $user_clubs = get_user_clubs($current_user_id, 2);
                         <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
                         <polyline points="9 22 9 12 15 12 15 22"></polyline>
                     </svg>
-                    <span>Dashboard</span>
+                    <span>Tableau de Bord</span>
                 </a>
                 <a href="#" class="nav-item">
                     <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="11" cy="11" r="8"></circle>
                         <path d="m21 21-4.35-4.35"></path>
                     </svg>
-                    <span>Discover Events</span>
+                    <span>Découvrir Événements</span>
                 </a>
                 <a href="#" class="nav-item">
                     <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -47,14 +47,14 @@ $user_clubs = get_user_clubs($current_user_id, 2);
                         <line x1="8" y1="2" x2="8" y2="6"></line>
                         <line x1="3" y1="10" x2="21" y2="10"></line>
                     </svg>
-                    <span>My Events</span>
+                    <span>Mes Événements</span>
                 </a>
                 <a href="createevent.php" class="nav-item">
                     <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <line x1="12" y1="5" x2="12" y2="19"></line>
                         <line x1="5" y1="12" x2="19" y2="12"></line>
                     </svg>
-                    <span>Create Event</span>
+                    <span>Créer Événement</span>
                 </a>
                 <a href="#" class="nav-item">
                     <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -63,7 +63,7 @@ $user_clubs = get_user_clubs($current_user_id, 2);
                         <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
                         <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
                     </svg>
-                    <span>My Clubs</span>
+                    <span>Mes Clubs</span>
                 </a>
                 <a href="communication.php" class="nav-item">
                     <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -77,7 +77,7 @@ $user_clubs = get_user_clubs($current_user_id, 2);
                         <circle cx="12" cy="8" r="7"></circle>
                         <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline>
                     </svg>
-                    <span>Certificates</span>
+                    <span>Certificats</span>
                 </a>
             </nav>
             
@@ -87,21 +87,21 @@ $user_clubs = get_user_clubs($current_user_id, 2);
                         <span>JS</span>
                     </div>
                     <div class="profile-info">
-                        <p class="profile-name">John Smith</p>
-                        <p class="profile-department">Computer Science</p>
+                        <p class="profile-name">Jean Smith</p>
+                        <p class="profile-department">Informatique</p>
                     </div>
                 </div>
             </div>
         </aside>
         
-        <!-- Main Content -->
+        <!-- Contenu Principal -->
         <main class="main-content">
-            <!-- Header -->
+            <!-- En-tête -->
             <header class="header">
                 <div class="header-content">
                     <div class="header-text">
-                        <h2 class="header-title">Welcome back, John!</h2>
-                        <p class="header-subtitle">Here's what's happening with your clubs today</p>
+                        <h2 class="header-title">Bon retour, Jean !</h2>
+                        <p class="header-subtitle">Voici ce qui se passe dans vos clubs aujourd'hui</p>
                     </div>
                     
                     <div class="header-actions">
@@ -110,7 +110,7 @@ $user_clubs = get_user_clubs($current_user_id, 2);
                                 <circle cx="11" cy="11" r="8"></circle>
                                 <path d="m21 21-4.35-4.35"></path>
                             </svg>
-                            <input type="text" placeholder="Search events, clubs..." class="search-input">
+                            <input type="text" placeholder="Rechercher événements, clubs..." class="search-input">
                         </div>
                         
                         <button class="notification-btn">
@@ -125,11 +125,11 @@ $user_clubs = get_user_clubs($current_user_id, 2);
             </header>
             
             <div class="content-container">
-                <!-- Stats Cards -->
+                <!-- Cartes de Statistiques -->
                 <div class="stats-grid">
                     <div class="stat-card">
                         <div class="stat-header">
-                            <span class="stat-title">Upcoming Events</span>
+                            <span class="stat-title">Événements à Venir</span>
                             <div class="stat-icon stat-icon-blue">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
@@ -146,7 +146,7 @@ $user_clubs = get_user_clubs($current_user_id, 2);
                     
                     <div class="stat-card">
                         <div class="stat-header">
-                            <span class="stat-title">Joined Clubs</span>
+                            <span class="stat-title">Clubs Rejoints</span>
                             <div class="stat-icon stat-icon-green">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
@@ -158,14 +158,14 @@ $user_clubs = get_user_clubs($current_user_id, 2);
                         </div>
                         <div class="stat-content">
                             <div class="stat-value"><?php echo count($user_clubs); ?></div>
-                            <p class="stat-change">Your active clubs</p>
+                            <p class="stat-change">Vos clubs actifs</p>
                         </div>
                     </div>
                 </div>
                 
-                <!-- Events and Clubs Grid -->
+                <!-- Grille Événements et Clubs -->
                 <div class="content-grid">
-                    <!-- Upcoming Events -->
+                    <!-- Événements à Venir -->
                     <div class="events-section">
                         <div class="section-card">
                             <div class="section-header">
@@ -175,7 +175,7 @@ $user_clubs = get_user_clubs($current_user_id, 2);
                                     <line x1="8" y1="2" x2="8" y2="6"></line>
                                     <line x1="3" y1="10" x2="21" y2="10"></line>
                                 </svg>
-                                <h3 class="section-title">Upcoming Events</h3>
+                                <h3 class="section-title">Événements à Venir</h3>
                             </div>
                             
                             <div class="events-list">
@@ -187,7 +187,7 @@ $user_clubs = get_user_clubs($current_user_id, 2);
                                                     <h4 class="event-title"><?php echo htmlspecialchars($event['titre']); ?></h4>
                                                     <p class="event-club"><?php echo htmlspecialchars($event['club_nom']); ?></p>
                                                 </div>
-                                                <span class="badge badge-blue">Event</span>
+                                                <span class="badge badge-blue">Événement</span>
                                             </div>
                                             
                                             <div class="event-details">
@@ -198,14 +198,14 @@ $user_clubs = get_user_clubs($current_user_id, 2);
                                                         <line x1="8" y1="2" x2="8" y2="6"></line>
                                                         <line x1="3" y1="10" x2="21" y2="10"></line>
                                                     </svg>
-                                                    <span><?php echo date('M j, Y', strtotime($event['date'])); ?></span>
+                                                    <span><?php echo date('j M Y', strtotime($event['date'])); ?></span>
                                                 </div>
                                                 <div class="event-detail">
                                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                                         <circle cx="12" cy="12" r="10"></circle>
                                                         <polyline points="12 6 12 12 16 14"></polyline>
                                                     </svg>
-                                                    <span><?php echo date('g:i A', strtotime($event['date'])); ?></span>
+                                                    <span><?php echo date('H:i', strtotime($event['date'])); ?></span>
                                                 </div>
                                                 <div class="event-detail">
                                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -224,24 +224,24 @@ $user_clubs = get_user_clubs($current_user_id, 2);
                                                         <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
                                                         <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
                                                     </svg>
-                                                    <span><?php echo $event['nbrParticipants']; ?> attending</span>
+                                                    <span><?php echo $event['nbrParticipants']; ?> participants</span>
                                                 </div>
-                                                <button class="btn btn-secondary">View Details</button>
+                                                <button class="btn btn-secondary">Voir Détails</button>
                                             </div>
                                         </div>
                                     <?php endforeach; ?>
                                 <?php else: ?>
                                     <div class="no-events">
-                                        <p>No upcoming events found in the database.</p>
+                                        <p>Aucun événement à venir trouvé dans la base de données.</p>
                                     </div>
                                 <?php endif; ?>
                             </div>
                             
-                            <button class="btn btn-outline btn-full">View All Events</button>
+                            <button class="btn btn-outline btn-full">Voir Tous les Événements</button>
                         </div>
                     </div>
                     
-                    <!-- Joined Clubs -->
+                    <!-- Clubs Rejoints -->
                     <div class="clubs-section">
                         <div class="section-card">
                             <div class="section-header">
@@ -251,7 +251,7 @@ $user_clubs = get_user_clubs($current_user_id, 2);
                                     <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
                                     <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
                                 </svg>
-                                <h3 class="section-title">My Clubs</h3>
+                                <h3 class="section-title">Mes Clubs</h3>
                             </div>
                             
                             <div class="clubs-list">
@@ -260,22 +260,22 @@ $user_clubs = get_user_clubs($current_user_id, 2);
                                         <?php 
                                         $event_count = get_club_event_count($club['idClub']);
                                         $badge_class = 'badge-blue';
-                                        $club_emoji = '🚀'; // Default emoji
+                                        $club_emoji = '🚀'; // Émoji par défaut
                                         
-                                        // Assign different badge colors and emojis based on club name or type
-                                        if (stripos($club['nom'], 'tech') !== false || stripos($club['nom'], 'computer') !== false) {
+                                        // Assigner différentes couleurs et émojis basés sur le nom du club
+                                        if (stripos($club['nom'], 'tech') !== false || stripos($club['nom'], 'computer') !== false || stripos($club['nom'], 'informatique') !== false) {
                                             $badge_class = 'badge-blue';
                                             $club_emoji = '🚀';
-                                        } elseif (stripos($club['nom'], 'international') !== false || stripos($club['nom'], 'cultural') !== false) {
+                                        } elseif (stripos($club['nom'], 'international') !== false || stripos($club['nom'], 'cultural') !== false || stripos($club['nom'], 'culture') !== false) {
                                             $badge_class = 'badge-purple';
                                             $club_emoji = '🌍';
-                                        } elseif (stripos($club['nom'], 'business') !== false || stripos($club['nom'], 'entrepreneur') !== false) {
+                                        } elseif (stripos($club['nom'], 'business') !== false || stripos($club['nom'], 'entrepreneur') !== false || stripos($club['nom'], 'commerce') !== false) {
                                             $badge_class = 'badge-green';
                                             $club_emoji = '💼';
-                                        } elseif (stripos($club['nom'], 'photo') !== false || stripos($club['nom'], 'art') !== false) {
+                                        } elseif (stripos($club['nom'], 'photo') !== false || stripos($club['nom'], 'art') !== false || stripos($club['nom'], 'artist') !== false) {
                                             $badge_class = 'badge-yellow';
                                             $club_emoji = '📸';
-                                        } elseif (stripos($club['nom'], 'ai') !== false || stripos($club['nom'], 'robot') !== false) {
+                                        } elseif (stripos($club['nom'], 'ai') !== false || stripos($club['nom'], 'robot') !== false || stripos($club['nom'], 'intelligence') !== false) {
                                             $badge_class = 'badge-indigo';
                                             $club_emoji = '🤖';
                                         }
@@ -286,7 +286,7 @@ $user_clubs = get_user_clubs($current_user_id, 2);
                                                     <div class="club-avatar"><?php echo $club_emoji; ?></div>
                                                     <div class="club-info">
                                                         <h4 class="club-name"><?php echo htmlspecialchars($club['nom']); ?></h4>
-                                                        <p class="club-role"><?php echo htmlspecialchars($club['position'] ?? 'Member'); ?></p>
+                                                        <p class="club-role"><?php echo htmlspecialchars($club['position'] ?? 'Membre'); ?></p>
                                                     </div>
                                                 </div>
                                                 <span class="badge <?php echo $badge_class; ?>">Club</span>
@@ -301,7 +301,7 @@ $user_clubs = get_user_clubs($current_user_id, 2);
                                                             <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
                                                             <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
                                                         </svg>
-                                                        <span><?php echo $club['nbrMembres']; ?> members</span>
+                                                        <span><?php echo $club['nbrMembres']; ?> membres</span>
                                                     </div>
                                                     <div class="club-stat">
                                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -310,7 +310,7 @@ $user_clubs = get_user_clubs($current_user_id, 2);
                                                             <line x1="8" y1="2" x2="8" y2="6"></line>
                                                             <line x1="3" y1="10" x2="21" y2="10"></line>
                                                         </svg>
-                                                        <span><?php echo $event_count; ?> events</span>
+                                                        <span><?php echo $event_count; ?> événements</span>
                                                     </div>
                                                 </div>
                                                 <div class="club-actions">
@@ -329,17 +329,17 @@ $user_clubs = get_user_clubs($current_user_id, 2);
                                                 </div>
                                             </div>
                                             
-                                            <button class="btn btn-tertiary btn-full">View Club Details</button>
+                                            <button class="btn btn-tertiary btn-full">Voir Détails du Club</button>
                                         </div>
                                     <?php endforeach; ?>
                                 <?php else: ?>
                                     <div class="no-clubs">
-                                        <p>You haven't joined any clubs yet.</p>
+                                        <p>Vous n'avez rejoint aucun club pour le moment.</p>
                                     </div>
                                 <?php endif; ?>
                             </div>
                             
-                            <button class="btn btn-outline btn-full">Browse All Clubs</button>
+                            <button class="btn btn-outline btn-full">Parcourir Tous les Clubs</button>
                         </div>
                     </div>
                 </div>
