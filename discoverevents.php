@@ -1,16 +1,14 @@
 <?php
+
 session_start();
 require_once 'database.php';
 
-// Récupérer l'ID de l'utilisateur connecté depuis la session
-$user_id = $_SESSION['user_id'] ?? 1; // À remplacer par votre logique d'authentification
+$user_id = $_SESSION['user_id'] ?? 1;
 
-// Connexion à la base de données
 $conn = db_connect();
 
-// Récupérer les informations de l'utilisateur
 $user = null;
-$initials = "JS"; // Valeur par défaut
+$initials = "JS"; 
 
 if ($user_id) {
     $user_sql = "SELECT nom, prenom, filiere FROM utilisateur WHERE idUtilisateur = ?";
@@ -21,7 +19,6 @@ if ($user_id) {
     
     if ($result->num_rows > 0) {
         $user = $result->fetch_assoc();
-        // Générer les initiales
         $first_initial = substr($user['prenom'], 0, 1);
         $last_initial = substr($user['nom'], 0, 1);
         $initials = strtoupper($first_initial . $last_initial);
@@ -29,27 +26,22 @@ if ($user_id) {
     $stmt->close();
 }
 
-// Récupérer les statistiques
 $stats = [];
 
-// Événements disponibles ce mois-ci
 $events_month_sql = "SELECT COUNT(*) as count FROM evenement 
                     WHERE MONTH(date) = MONTH(CURRENT_DATE()) 
                     AND YEAR(date) = YEAR(CURRENT_DATE())";
 $result = $conn->query($events_month_sql);
 $stats['events_this_month'] = $result->fetch_assoc()['count'];
 
-// Clubs actifs (qui organisent des événements) - MODIFICATION ICI
 $active_clubs_sql = "SELECT COUNT(DISTINCT idClub) as count FROM evenement";
 $result = $conn->query($active_clubs_sql);
 $stats['active_clubs'] = $result->fetch_assoc()['count'];
 
-// Types d'événements (basé sur les titres distincts)
 $categories_sql = "SELECT COUNT(DISTINCT titre) as count FROM evenement";
 $result = $conn->query($categories_sql);
 $stats['categories'] = $result->fetch_assoc()['count'];
 
-// Récupérer TOUS les événements - MODIFICATION ICI
 $events_sql = "SELECT e.*, c.nom as club_nom 
                FROM evenement e 
                JOIN club c ON e.idClub = c.idClub 
@@ -58,7 +50,6 @@ $events_sql = "SELECT e.*, c.nom as club_nom
 $events_result = $conn->query($events_sql);
 $events_count = $events_result->num_rows;
 
-// Fermer la connexion
 db_close();
 ?>
 
@@ -87,7 +78,6 @@ db_close();
             min-height: 100vh;
         }
 
-        /* Sidebar */
         .sidebar {
             width: 256px;
             background-color: #13141a;
@@ -116,7 +106,6 @@ db_close();
             color: #9ca3af;
         }
 
-        /* Navigation */
         nav {
             flex: 1;
             padding: 16px;
@@ -153,7 +142,6 @@ db_close();
             flex-shrink: 0;
         }
 
-        /* User Profile */
         .user-profile {
             padding: 16px;
             border-top: 1px solid #1f2029;
@@ -200,7 +188,6 @@ db_close();
             color: #9ca3af;
         }
 
-        /* Main Content */
         .main-content {
             flex: 1;
             overflow: auto;
@@ -212,7 +199,6 @@ db_close();
             padding: 32px;
         }
 
-        /* Header */
         .header {
             display: flex;
             align-items: center;
@@ -251,7 +237,6 @@ db_close();
             color: #9ca3af;
         }
 
-        /* Search */
         .search-container {
             position: relative;
             width: 384px;
@@ -288,7 +273,6 @@ db_close();
             color: #6b7280;
         }
 
-        /* Stats Cards */
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -370,7 +354,6 @@ db_close();
             color: #6b7280;
         }
 
-        /* Category Filters */
         .category-filters {
             display: flex;
             gap: 12px;
@@ -407,7 +390,6 @@ db_close();
             color: #ffffff;
         }
 
-        /* Events Section */
         .events-header {
             display: flex;
             align-items: center;
@@ -429,7 +411,6 @@ db_close();
             color: #9ca3af;
         }
 
-        /* Events Grid */
         .events-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
@@ -533,7 +514,6 @@ db_close();
             color: #4b5563;
         }
 
-        /* Attendance Poll */
         .attendance-poll {
             display: flex;
             align-items: center;
@@ -605,7 +585,6 @@ db_close();
             background-color: #2a2b35;
         }
 
-        /* Responsive */
         @media (max-width: 1024px) {
             .events-grid {
                 grid-template-columns: 1fr;
@@ -635,23 +614,20 @@ db_close();
 </head>
 <body>
     <div class="container">
-        <!-- Sidebar -->
         <div class="sidebar">
-            <!-- Logo -->
             <div class="logo">
                 <h1>ClubConnect</h1>
                 <p>Tableau de Bord Étudiant</p>
             </div>
 
-            <!-- Navigation -->
             <nav>
-                <a href="#" class="nav-link">
+                <a href="home.php" class="nav-link">
                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
                     </svg>
                     <span>Tableau de Bord</span>
                 </a>
-                <a href="#" class="nav-link active">
+                <a href="discoverevents.php" class="nav-link active">
                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
@@ -664,7 +640,7 @@ db_close();
                     </svg>
                     <span>Mes Événements</span>
                 </a>
-                <a href="#" class="nav-link">
+                <a href="createevent.php" class="nav-link">
                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                     </svg>
@@ -676,28 +652,20 @@ db_close();
                     </svg>
                     <span>Mes Clubs</span>
                 </a>
-                <a href="#" class="nav-link">
+                <a href="communication.php" class="nav-link">
                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
                     </svg>
                     <span>Communications</span>
                 </a>
-                <a href="#" class="nav-link">
+                <a href="certificats.php" class="nav-link">
                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/>
                     </svg>
                     <span>Certificats</span>
                 </a>
-                <a href="#" class="nav-link">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                    </svg>
-                    <span>Paramètres</span>
-                </a>
             </nav>
 
-            <!-- User Profile -->
             <div class="user-profile">
                 <div class="user-card">
                     <div class="user-avatar"><?= $initials ?></div>
@@ -714,10 +682,8 @@ db_close();
             </div>
         </div>
 
-        <!-- Main Content -->
         <div class="main-content">
             <div class="content-wrapper">
-                <!-- Header -->
                 <div class="header">
                     <div class="header-left">
                         <div class="header-title">
@@ -737,7 +703,6 @@ db_close();
                     </div>
                 </div>
 
-                <!-- Stats Cards -->
                 <div class="stats-grid">
                     <div class="stat-card">
                         <div class="stat-header">
@@ -779,7 +744,6 @@ db_close();
                     </div>
                 </div>
 
-                <!-- Category Filters -->
                 <div class="category-filters">
                     <button class="category-btn active">Tous les Événements</button>
                     <button class="category-btn">Atelier</button>
@@ -789,23 +753,19 @@ db_close();
                     <button class="category-btn">Social</button>
                 </div>
 
-                <!-- Events Section -->
                 <div>
                     <div class="events-header">
                         <h2>Tous les Événements</h2>
                         <p class="events-count"><?= $events_count ?> événements trouvés</p>
                     </div>
 
-                    <!-- Events Grid -->
                     <div class="events-grid">
                         <?php if ($events_result->num_rows > 0): ?>
                             <?php 
-                            // Réinitialiser le pointeur du résultat
                             $events_result->data_seek(0);
                             while($event = $events_result->fetch_assoc()): 
                             ?>
                                 <?php
-                                // Déterminer la catégorie basée sur le titre
                                 $category = "Événement";
                                 $title_lower = strtolower($event['titre']);
                                 
@@ -819,10 +779,8 @@ db_close();
                                     $category = "Événement";
                                 }
                                 
-                                // GESTION DES IMAGES - CORRECTION ICI
                                 $image_url = "https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=MnwxfDB8MXxyYW5kb218MHx8ZXZlbnR8fHx8fHwxNzI4NjU2ODAw&ixlib=rb-4.0.3&q=80&w=1080";
                                 
-                                // Vérifier le titre de l'événement pour assigner l'image appropriée
                                 $title_lower = strtolower($event['titre']);
                                 
                                 if (strpos($title_lower, 'formationgit') !== false || strpos($title_lower, 'formation git') !== false || strpos($title_lower, 'git') !== false) {
@@ -836,10 +794,8 @@ db_close();
                                     }
                                 }
                                 
-                                // Formater la date seulement (sans l'heure)
                                 $date = date('M j, Y', strtotime($event['date']));
                                 
-                                // Récupérer les valeurs avec des valeurs par défaut pour éviter les erreurs
                                 $nbrParticipants = isset($event['nbrParticipants']) ? $event['nbrParticipants'] : 0;
                                 $capacite = isset($event['capacite']) ? $event['capacite'] : 50;
                                 ?>
@@ -871,7 +827,6 @@ db_close();
                                                 <span><?= htmlspecialchars($event['lieu']) ?></span>
                                             </div>
                                         </div>
-                                        <!-- Attendance Poll -->
                                         <div class="attendance-poll">
                                             <div class="attendance-count">
                                                 <svg class="attendance-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">

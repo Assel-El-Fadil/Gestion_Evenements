@@ -18,7 +18,6 @@ $user_clubs = get_user_clubs($current_user_id, 2);
 </head>
 <body>
     <div class="dashboard">
-        <!-- Barre latérale -->
         <aside class="sidebar">
             <div class="sidebar-header">
                 <h1 class="sidebar-title">ClubConnect</h1>
@@ -33,14 +32,14 @@ $user_clubs = get_user_clubs($current_user_id, 2);
                     </svg>
                     <span>Tableau de Bord</span>
                 </a>
-                <a href="#" class="nav-item">
+                <a href="discoverevents.php" class="nav-item">
                     <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="11" cy="11" r="8"></circle>
                         <path d="m21 21-4.35-4.35"></path>
                     </svg>
                     <span>Découvrir Événements</span>
                 </a>
-                <a href="#" class="nav-item">
+                <a href="MyEvents.html" class="nav-item">
                     <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
                         <line x1="16" y1="2" x2="16" y2="6"></line>
@@ -56,7 +55,7 @@ $user_clubs = get_user_clubs($current_user_id, 2);
                     </svg>
                     <span>Créer Événement</span>
                 </a>
-                <a href="#" class="nav-item">
+                <a href="MyClubs.html" class="nav-item">
                     <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
                         <circle cx="9" cy="7" r="4"></circle>
@@ -72,7 +71,7 @@ $user_clubs = get_user_clubs($current_user_id, 2);
                     </svg>
                     <span>Communications</span>
                 </a>
-                <a href="#" class="nav-item">
+                <a href="certificats.php" class="nav-item">
                     <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="12" cy="8" r="7"></circle>
                         <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline>
@@ -94,9 +93,7 @@ $user_clubs = get_user_clubs($current_user_id, 2);
             </div>
         </aside>
         
-        <!-- Contenu Principal -->
         <main class="main-content">
-            <!-- En-tête -->
             <header class="header">
                 <div class="header-content">
                     <div class="header-text">
@@ -125,7 +122,6 @@ $user_clubs = get_user_clubs($current_user_id, 2);
             </header>
             
             <div class="content-container">
-                <!-- Cartes de Statistiques -->
                 <div class="stats-grid">
                     <div class="stat-card">
                         <div class="stat-header">
@@ -163,9 +159,7 @@ $user_clubs = get_user_clubs($current_user_id, 2);
                     </div>
                 </div>
                 
-                <!-- Grille Événements et Clubs -->
                 <div class="content-grid">
-                    <!-- Événements à Venir -->
                     <div class="events-section">
                         <div class="section-card">
                             <div class="section-header">
@@ -241,7 +235,6 @@ $user_clubs = get_user_clubs($current_user_id, 2);
                         </div>
                     </div>
                     
-                    <!-- Clubs Rejoints -->
                     <div class="clubs-section">
                         <div class="section-card">
                             <div class="section-header">
@@ -260,30 +253,10 @@ $user_clubs = get_user_clubs($current_user_id, 2);
                                         <?php 
                                         $event_count = get_club_event_count($club['idClub']);
                                         $badge_class = 'badge-blue';
-                                        $club_emoji = '🚀'; // Émoji par défaut
-                                        
-                                        // Assigner différentes couleurs et émojis basés sur le nom du club
-                                        if (stripos($club['nom'], 'tech') !== false || stripos($club['nom'], 'computer') !== false || stripos($club['nom'], 'informatique') !== false) {
-                                            $badge_class = 'badge-blue';
-                                            $club_emoji = '🚀';
-                                        } elseif (stripos($club['nom'], 'international') !== false || stripos($club['nom'], 'cultural') !== false || stripos($club['nom'], 'culture') !== false) {
-                                            $badge_class = 'badge-purple';
-                                            $club_emoji = '🌍';
-                                        } elseif (stripos($club['nom'], 'business') !== false || stripos($club['nom'], 'entrepreneur') !== false || stripos($club['nom'], 'commerce') !== false) {
-                                            $badge_class = 'badge-green';
-                                            $club_emoji = '💼';
-                                        } elseif (stripos($club['nom'], 'photo') !== false || stripos($club['nom'], 'art') !== false || stripos($club['nom'], 'artist') !== false) {
-                                            $badge_class = 'badge-yellow';
-                                            $club_emoji = '📸';
-                                        } elseif (stripos($club['nom'], 'ai') !== false || stripos($club['nom'], 'robot') !== false || stripos($club['nom'], 'intelligence') !== false) {
-                                            $badge_class = 'badge-indigo';
-                                            $club_emoji = '🤖';
-                                        }
                                         ?>
                                         <div class="club-item">
                                             <div class="club-header-content">
                                                 <div class="club-main">
-                                                    <div class="club-avatar"><?php echo $club_emoji; ?></div>
                                                     <div class="club-info">
                                                         <h4 class="club-name"><?php echo htmlspecialchars($club['nom']); ?></h4>
                                                         <p class="club-role"><?php echo htmlspecialchars($club['position'] ?? 'Membre'); ?></p>

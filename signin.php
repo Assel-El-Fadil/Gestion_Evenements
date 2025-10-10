@@ -8,14 +8,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $email = trim($_POST["email"]);
     $password = trim($_POST["password"]);
 
-    // Préparer la requête pour prévenir les injections SQL
     $stmt = $conn->prepare("SELECT idUtilisateur, mdp, role, nom, prenom FROM Utilisateur WHERE email = ?");
     $stmt->bind_param("s", $email);
     $stmt->execute();
     $stmt->store_result();
 
     if ($stmt->num_rows > 0) {
-        // Lier les colonnes de résultat
         $stmt->bind_result($idUtilisateur, $hashed_password, $role, $nom, $prenom);
         $stmt->fetch();
 
@@ -26,7 +24,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $_SESSION["user_role"] = $role;
             $_SESSION["user_name"] = $nom . " " . $prenom;
 
-            // Rediriger vers la page d'accueil ou le tableau de bord
             header("Location: home.php");
             exit();
         } else {
@@ -62,7 +59,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             overflow: hidden;
         }
 
-        /* Arrière-plan */
         .background {
             position: absolute;
             inset: 0;
@@ -75,7 +71,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             background: linear-gradient(45deg, rgba(255,255,255,0.1) 0%, transparent 50%, rgba(147,197,253,0.2) 100%);
         }
 
-        /* Éléments flottants */
         .floating-element-1 {
             position: absolute;
             top: 5rem;
@@ -123,7 +118,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             }
         }
 
-        /* Carte de connexion */
         .login-card {
             width: 100%;
             max-width: 28rem;
@@ -137,7 +131,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             padding: 2rem;
         }
 
-        /* En-tête */
         .header {
             text-align: center;
             margin-bottom: 2rem;
@@ -176,7 +169,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             line-height: 1.5;
         }
 
-        /* Formulaire */
         .form {
             display: flex;
             flex-direction: column;
@@ -262,7 +254,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             height: 1.25rem;
         }
 
-        /* Se souvenir de moi et mot de passe oublié */
         .form-footer {
             display: flex;
             align-items: center;
@@ -292,7 +283,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             color: white;
         }
 
-        /* Bouton de soumission */
         .submit-button {
             width: 100%;
             padding: 0.75rem 1rem;
@@ -319,7 +309,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             transform: scale(0.98);
         }
 
-        /* Lien d'inscription */
         .signup-link {
             text-align: center;
             margin-top: 2rem;
@@ -338,7 +327,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             color: rgba(255,255,255,0.8);
         }
 
-        /* Messages d'erreur */
         .error-message {
             background: rgba(239, 68, 68, 0.1);
             border: 1px solid rgba(239, 68, 68, 0.3);
@@ -485,11 +473,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             }
         }
 
-        // Afficher le message d'erreur s'il existe
         document.addEventListener('DOMContentLoaded', function() {
             const errorMessage = document.querySelector('.error-message');
             if (errorMessage) {
-                // Animation d'apparition pour le message d'erreur
                 errorMessage.style.opacity = '0';
                 errorMessage.style.transform = 'translateY(-10px)';
                 errorMessage.style.display = 'block';

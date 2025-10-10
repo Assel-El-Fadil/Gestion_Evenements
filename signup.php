@@ -1,14 +1,10 @@
 <?php
-// --- CONFIGURATION DE LA BASE DE DONNÉES ---
 require "database.php";
 
-// --- CONNEXION À LA BASE DE DONNÉES ---
 $conn = db_connect();
 
-// --- TRAITEMENT DU FORMULAIRE ---
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
-    // Récupération et sécurisation des champs
     $prenom = htmlspecialchars(trim($_POST['firstName']));
     $nom = htmlspecialchars(trim($_POST['lastName']));
     $dateNaissance = $_POST['dateOfBirth'];
@@ -19,7 +15,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $mdp = password_hash($_POST['password'], PASSWORD_BCRYPT);
     $role = "utilisateur";
 
-    // Vérifier si l'email ou l'apogée existe déjà
     $check = $conn->prepare("SELECT idUtilisateur FROM utilisateur WHERE email = ? OR apogee = ?");
     $check->bind_param("ss", $email, $apogee);
     $check->execute();
@@ -33,7 +28,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     }
     $check->close();
 
-    // --- INSERTION DANS LA TABLE ---
     $stmt = $conn->prepare("
         INSERT INTO utilisateur (nom, prenom, dateNaissance, annee, filiere, email, mdp, apogee, role)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -46,12 +40,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $stmt->bind_param("sssssssss", $nom, $prenom, $dateNaissance, $annee, $filiere, $email, $mdp, $apogee, $role);
 
     if ($stmt->execute()) {
-        // Création de cookies valables 1 jour
         setcookie("user_email", $email, time() + 86400, "/");
         setcookie("user_nom", $prenom . " " . $nom, time() + 86400, "/");
         setcookie("user_role", $role, time() + 86400, "/");
 
-        //ici après sign up on sera dirigé vers captcha.php
         echo "<script>
             alert('Inscription réussie ! Bienvenue $prenom.');
             window.location.href = 'home.php'; 
@@ -92,7 +84,6 @@ db_close();
             overflow-x: hidden;
         }
 
-        /* Background layers */
         .bg-gradient {
             position: absolute;
             inset: 0;
@@ -100,7 +91,6 @@ db_close();
             z-index: 0;
         }
 
-        /* Animated orbs */
         .orb {
             position: absolute;
             border-radius: 50%;
@@ -141,7 +131,6 @@ db_close();
             z-index: 10;
         }
 
-        /* Header */
         .header {
             margin-bottom: 2rem;
             text-align: center;
@@ -159,7 +148,6 @@ db_close();
             color: #9ca3af;
         }
 
-        /* Main card */
         .card {
             background-color: rgba(0, 0, 0, 0.3);
             backdrop-filter: blur(24px);
@@ -185,7 +173,6 @@ db_close();
             color: rgba(209, 213, 219, 0.8);
         }
 
-        /* Form */
         form {
             display: flex;
             flex-direction: column;
@@ -247,19 +234,16 @@ db_close();
             color: #ffffff;
         }
 
-        /* Error messages */
         .error {
             font-size: 0.75rem;
             color: #f87171;
             margin-top: -0.25rem;
         }
 
-        /* Hidden field */
         .hidden {
             display: none;
         }
 
-        /* Submit button */
         button[type="submit"] {
             width: 100%;
             padding: 0.875rem;
@@ -284,7 +268,6 @@ db_close();
             transform: scale(0.98);
         }
 
-        /* Login link */
         .login-link {
             text-align: center;
             margin-top: 1.5rem;
@@ -304,13 +287,11 @@ db_close();
             text-underline-offset: 4px;
         }
 
-        /* Date input styling */
         input[type="date"]::-webkit-calendar-picker-indicator {
             filter: invert(1);
             cursor: pointer;
         }
 
-        /* Responsive */
         @media (max-width: 640px) {
             .form-row {
                 grid-template-columns: 1fr;
@@ -336,13 +317,11 @@ db_close();
     <div class="orb orb-2"></div>
 
     <div class="container">
-        <!-- Header -->
         <div class="header">
             <h1>ClubConnect</h1>
             <p class="subtitle">Inscription étudiant</p>
         </div>
 
-        <!-- Main Form Card -->
         <div class="card">
             <div class="card-header">
                 <h2>Créez votre compte</h2>
@@ -350,7 +329,6 @@ db_close();
             </div>
 
             <form id="signupForm" method="POST" action="" novalidate>
-                <!-- Personal Information -->
                 <div class="form-row">
                     <div class="form-group">
                         <label for="firstName">Prénom</label>
@@ -377,7 +355,6 @@ db_close();
                     </div>
                 </div>
 
-                <!-- Date of Birth -->
                 <div class="form-group">
                     <label for="dateOfBirth">Date de naissance</label>
                     <input 
@@ -389,7 +366,6 @@ db_close();
                     <span class="error" id="dateOfBirthError"></span>
                 </div>
 
-                <!-- Email institutionnel -->
                 <div class="form-group">
                     <label for="institutionalEmail">Email institutionnel</label>
                     <input 
@@ -402,7 +378,6 @@ db_close();
                     <span class="error" id="institutionalEmailError"></span>
                 </div>
 
-                <!-- Apogée -->
                 <div class="form-group">
                     <label for="studentId">Apogée</label>
                     <input 
@@ -418,7 +393,6 @@ db_close();
                     <span class="error" id="studentIdError"></span>
                 </div>
 
-                <!-- Academic Information -->
                 <div class="form-group">
                     <label for="yearOfStudy">Année d'études</label>
                     <select id="yearOfStudy" name="yearOfStudy" required>
@@ -432,7 +406,6 @@ db_close();
                     <span class="error" id="yearOfStudyError"></span>
                 </div>
 
-                <!-- Field of Study (conditional) -->
                 <div class="form-group hidden" id="fieldOfStudyGroup">
                     <label for="fieldOfStudy">Filière d'études</label>
                     <select id="fieldOfStudy" name="fieldOfStudy">
@@ -448,7 +421,6 @@ db_close();
                     <span class="error" id="fieldOfStudyError"></span>
                 </div>
 
-                <!-- Password -->
                 <div class="form-group">
                     <label for="password">Mot de passe</label>
                     <input 
@@ -461,11 +433,9 @@ db_close();
                     <span class="error" id="passwordError"></span>
                 </div>
 
-                <!-- Submit Button -->
                 <button type="submit">Créer un compte</button>
             </form>
 
-            <!-- Login Link -->
             <div class="login-link">
                 <p>
                     Vous avez déjà un compte ?
@@ -476,7 +446,6 @@ db_close();
     </div>
 
     <script>
-        // Show/hide field of study based on year selection
         document.getElementById('yearOfStudy').addEventListener('change', function() {
             const fieldOfStudyGroup = document.getElementById('fieldOfStudyGroup');
             const fieldOfStudy = document.getElementById('fieldOfStudy');
@@ -493,7 +462,6 @@ db_close();
             }
         });
 
-        // Clear error on input
         const inputs = document.querySelectorAll('input, select');
         inputs.forEach(input => {
             input.addEventListener('input', function() {
@@ -504,16 +472,13 @@ db_close();
             });
         });
 
-        // Form validation and submission
         document.getElementById('signupForm').addEventListener('submit', function(e) {
             let isValid = true;
 
-            // Clear all errors
             document.querySelectorAll('.error').forEach(error => {
                 error.textContent = '';
             });
 
-            // Get form values
             const firstName = document.getElementById('firstName').value.trim();
             const lastName = document.getElementById('lastName').value.trim();
             const dateOfBirth = document.getElementById('dateOfBirth').value;
@@ -523,7 +488,6 @@ db_close();
             const fieldOfStudy = document.getElementById('fieldOfStudy').value;
             const password = document.getElementById('password').value;
 
-            // Validation
             if (!firstName) {
                 document.getElementById('firstNameError').textContent = 'Le prénom est requis';
                 isValid = false;

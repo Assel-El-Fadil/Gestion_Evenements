@@ -1,36 +1,30 @@
 <?php
-// Include PHPMailer classes
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\SMTP;
 use PHPMailer\PHPMailer\Exception;
 
-require 'vendor/autoload.php'; // Adjust path as needed
+require 'vendor/autoload.php';
 require 'database.php';
 
 $success_message = '';
 $error_message = '';
 
-// Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
-        // Get form data
         $recipient = $_POST['recipient'] ?? '';
         $recipient_type = $_POST['recipient-type'] ?? 'custom';
         $subject = $_POST['subject'] ?? '';
         $message = $_POST['message'] ?? '';
         
-        // Validate required fields
         if (empty($subject) || empty($message)) {
             throw new Exception("Subject and message are required.");
         }
         
-        // Get recipients based on type
         $recipients = [];
         
         if ($recipient_type === 'custom' && !empty($recipient)) {
             $recipients = array_map('trim', explode(',', $recipient));
         } else {
-            // Get recipients from database based on type
             $conn = db_connect();
             
             $conn->set_charset("utf8mb4");
@@ -40,9 +34,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $sql = "SELECT DISTINCT u.email 
                             FROM Utilisateur u 
                             JOIN Adhérence a ON u.idUtilisateur = a.idUtilisateur 
-                            WHERE a.idClub = ?"; // You'll need to set the club ID
+                            WHERE a.idClub = ?";
                     $stmt = $conn->prepare($sql);
-                    $club_id = 1; // Default club ID - should be dynamic in production
+                    $club_id = 1;
                     $stmt->bind_param("i", $club_id);
                     break;
                     
@@ -51,9 +45,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             FROM Utilisateur u 
                             JOIN Inscription i ON u.idUtilisateur = i.idUtilisateur 
                             JOIN Événement e ON i.idEvenement = e.idEvenement 
-                            WHERE e.idClub = ?"; // You'll need to set the club ID
+                            WHERE e.idClub = ?";
                     $stmt = $conn->prepare($sql);
-                    $club_id = 1; // Default club ID - should be dynamic in production
+                    $club_id = 1;
                     $stmt->bind_param("i", $club_id);
                     break;
                     
@@ -76,7 +70,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
         
-        // Validate email addresses
         $valid_recipients = [];
         foreach ($recipients as $email) {
             if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -88,43 +81,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new Exception("No valid email addresses found.");
         }
         
-        // Send emails using PHPMailer
         $mail = new PHPMailer(true);
         
         try {
-            // Server settings
             $mail->isSMTP();
-            $mail->Host = 'smtp.gmail.com'; // Set your SMTP server
+            $mail->Host = 'smtp.gmail.com';
             $mail->SMTPAuth = true;
-            $mail->Username = 'xassil7@gmail.com'; // Your email
-            $mail->Password = 'ehow xvqr vkyd zmrh'; // Your app password
+            $mail->Username = 'xassil7@gmail.com';
+            $mail->Password = 'ehow xvqr vkyd zmrh';
             $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
             $mail->Port = 587;
             
-            // Recipients
-            $mail->setFrom('your-email@gmail.com', 'ClubConnect');
-            $mail->addReplyTo('your-email@gmail.com', 'ClubConnect');
+            $mail->setFrom('user@gmail.com', 'ClubConnect');
+            $mail->addReplyTo('user@gmail.com', 'ClubConnect');
             
-            // Add recipients
             foreach ($valid_recipients as $email) {
-                $mail->addBCC($email); // Use BCC to protect recipient privacy
+                $mail->addBCC($email);
             }
             
-            // Content
             $mail->isHTML(true);
             $mail->Subject = $subject;
             $mail->Body = nl2br(htmlspecialchars($message));
             $mail->AltBody = strip_tags($message);
             
-            // Send email
             $mail->send();
             
-            // Log the email in database
             $conn = db_connect();
             if (!$conn->connect_error) {
                 $conn->set_charset("utf8mb4");
                 
-                $user_id = 1; // Default user ID - should be from session in production
+                $user_id = 1;
                 $sql = "INSERT INTO Email (destinataire, sujet, message, dateEnvoi, idUtilisateur) 
                         VALUES (?, ?, ?, NOW(), ?)";
                 
@@ -147,7 +133,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Safe function to get form data for display
 function getFormValue($field) {
     return isset($_POST[$field]) ? htmlspecialchars($_POST[$field]) : '';
 }
@@ -161,7 +146,6 @@ function getFormValue($field) {
     <link rel="stylesheet" href="communication.css">
 </head>
 <body>
-    <!-- Sidebar -->
     <div class="sidebar">
         <div class="sidebar-header">
             <h1>ClubConnect</h1>
@@ -178,7 +162,7 @@ function getFormValue($field) {
                 </svg>
                 <span>Dashboard</span>
             </a>
-            <a href="#" class="nav-item">
+            <a href="discoverevents.php" class="nav-item">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
                     <circle cx="12" cy="12" r="3"/>
@@ -216,7 +200,7 @@ function getFormValue($field) {
                 </svg>
                 <span>Communications</span>
             </a>
-            <a href="#" class="nav-item">
+            <a href="certificats.php" class="nav-item">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <circle cx="12" cy="8" r="6"/>
                     <path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/>
@@ -236,9 +220,7 @@ function getFormValue($field) {
         </div>
     </div>
 
-    <!-- Main Content -->
     <div class="main-content">
-        <!-- Header -->
         <div class="header">
             <div class="header-left">
                 <button class="back-button" onclick="window.history.back()">
@@ -254,7 +236,6 @@ function getFormValue($field) {
             <div class="notification-dot"></div>
         </div>
 
-        <!-- Success/Error Messages -->
         <?php if ($success_message): ?>
             <div class="message success">
                 <?php echo htmlspecialchars($success_message); ?>
@@ -267,11 +248,9 @@ function getFormValue($field) {
             </div>
         <?php endif; ?>
 
-        <!-- Email Form -->
         <div class="email-container">
             <div class="email-form-wrapper">
                 <form method="POST">
-                    <!-- Recipient -->
                     <div class="form-group">
                         <label for="recipient" class="form-label">To</label>
                         <input 
@@ -284,7 +263,6 @@ function getFormValue($field) {
                         >
                     </div>
 
-                    <!-- Recipient Type -->
                     <div class="form-group">
                         <label class="form-label">Send to</label>
                         <div class="radio-group">
@@ -306,7 +284,6 @@ function getFormValue($field) {
                         </div>
                     </div>
 
-                    <!-- Subject -->
                     <div class="form-group">
                         <label for="subject" class="form-label">Subject</label>
                         <input 
@@ -320,7 +297,6 @@ function getFormValue($field) {
                         >
                     </div>
 
-                    <!-- Message -->
                     <div class="form-group">
                         <label for="message" class="form-label">Message</label>
                         <textarea 
@@ -332,7 +308,6 @@ function getFormValue($field) {
                         ><?php echo getFormValue('message'); ?></textarea>
                     </div>
 
-                    <!-- Actions -->
                     <div class="form-actions">
                         <div class="actions-left">
                             <button type="button" class="btn btn-secondary">
@@ -359,7 +334,6 @@ function getFormValue($field) {
                 </form>
             </div>
 
-            <!-- Email Stats -->
             <div class="stats-grid">
                 <div class="stat-card">
                     <div class="stat-card-content">
@@ -393,7 +367,6 @@ function getFormValue($field) {
     </div>
 
     <script>
-        // Update recipient field based on radio selection
         document.addEventListener('DOMContentLoaded', function() {
             const recipientInput = document.getElementById('recipient');
             const radioButtons = document.querySelectorAll('input[name="recipient-type"]');
@@ -411,7 +384,6 @@ function getFormValue($field) {
                 });
             });
             
-            // Initialize based on current selection
             const selectedRadio = document.querySelector('input[name="recipient-type"]:checked');
             if (selectedRadio && selectedRadio.value !== 'custom') {
                 recipientInput.disabled = true;

@@ -13,7 +13,6 @@ body {
     line-height: 1.5;
 }
 
-/* Sidebar */
 .sidebar {
     position: fixed;
     left: 0;
@@ -116,7 +115,6 @@ body {
     color: #9ca3af;
 }
 
-/* Main Content */
 .main-content {
     margin-left: 256px;
     padding: 32px;
@@ -171,7 +169,6 @@ body {
     border-radius: 50%;
 }
 
-/* Email Form */
 .email-container {
     max-width: 896px;
 }
@@ -320,7 +317,6 @@ body {
     height: 16px;
 }
 
-/* Stats Cards */
 .stats-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);

@@ -3,9 +3,8 @@ require "database.php";
 
 $conn = db_connect();
 
-// Récupérer les informations de l'utilisateur connecté
 session_start();
-$user_id = $_SESSION['user_id'] ?? 1; // Remplacer par l'ID de l'utilisateur connecté
+$user_id = $_SESSION['user_id'] ?? 1;
 
 $sql_user = "SELECT nom, prenom, filiere FROM Utilisateur WHERE idUtilisateur = ?";
 $stmt_user = $conn->prepare($sql_user);
@@ -14,7 +13,6 @@ $stmt_user->execute();
 $result_user = $stmt_user->get_result();
 $user = $result_user->fetch_assoc();
 
-// Si l'utilisateur n'est pas trouvé, utiliser des valeurs par défaut
 if (!$user) {
     $user = [
         'nom' => 'Dupont',
@@ -23,10 +21,8 @@ if (!$user) {
     ];
 }
 
-// Générer les initiales pour l'avatar
 $initials = strtoupper(substr($user['prenom'], 0, 1) . substr($user['nom'], 0, 1));
 
-// Récupérer les attestations avec informations sur l'utilisateur et l'événement
 $sql = "SELECT 
             a.idUtilisateur,
             a.idEvenement,
@@ -56,27 +52,22 @@ if ($result) {
     echo "Erreur lors de la récupération des certificats : " . $conn->error;
 }
 
-// Récupérer les statistiques depuis la base de données
-// 1. Total des certificats
 $sql_total_certificats = "SELECT COUNT(*) as total FROM Attestation";
 $result_total = $conn->query($sql_total_certificats);
 $total_certificats = $result_total ? $result_total->fetch_assoc()['total'] : 0;
 
-// 2. Certificats ce mois-ci
 $sql_certificats_mois = "SELECT COUNT(*) as total_mois FROM Attestation 
                          WHERE MONTH(dateGeneration) = MONTH(CURRENT_DATE()) 
                          AND YEAR(dateGeneration) = YEAR(CURRENT_DATE())";
 $result_mois = $conn->query($sql_certificats_mois);
 $certificats_mois = $result_mois ? $result_mois->fetch_assoc()['total_mois'] : 0;
 
-// 3. Événements participés ce semestre
 $sql_events_semestre = "SELECT COUNT(DISTINCT idEvenement) as total_events 
                         FROM Inscription 
                         WHERE dateInscription >= DATE_SUB(CURRENT_DATE(), INTERVAL 6 MONTH)";
 $result_events = $conn->query($sql_events_semestre);
 $events_semestre = $result_events ? $result_events->fetch_assoc()['total_events'] : 0;
 
-// 4. Clubs actifs (clubs rejoints)
 $sql_clubs_actifs = "SELECT COUNT(DISTINCT idClub) as total_clubs FROM Adherence";
 $result_clubs = $conn->query($sql_clubs_actifs);
 $clubs_actifs = $result_clubs ? $result_clubs->fetch_assoc()['total_clubs'] : 0;
@@ -91,7 +82,6 @@ $conn->close();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ClubConnect - Certificats</title>
     <style>
-        /* Votre CSS existant reste inchangé */
         * {
             margin: 0;
             padding: 0;
@@ -112,7 +102,6 @@ $conn->close();
             min-height: 100vh;
         }
 
-        /* Sidebar Styles */
         .sidebar {
             width: 256px;
             background: linear-gradient(to bottom, #0f0f17, #0a0a0f);
@@ -208,7 +197,6 @@ $conn->close();
             font-size: 12px;
         }
 
-        /* Main Content */
         .main-content {
             flex: 1;
             overflow-y: auto;
@@ -220,7 +208,6 @@ $conn->close();
             margin: 0 auto;
         }
 
-        /* Header */
         .page-header {
             margin-bottom: 32px;
         }
@@ -290,7 +277,6 @@ $conn->close();
             font-size: 14px;
         }
 
-        /* Stats Grid */
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -368,7 +354,6 @@ $conn->close();
             margin-top: 4px;
         }
 
-        /* Certificates List */
         .certificates-list {
             display: flex;
             flex-direction: column;
@@ -539,7 +524,6 @@ $conn->close();
             cursor: not-allowed;
         }
 
-        /* Responsive */
         @media (max-width: 768px) {
             .sidebar {
                 display: none;
@@ -573,7 +557,6 @@ $conn->close();
 </head>
 <body>
 <div class="container">
-    <!-- Sidebar (inchangé) -->
     <aside class="sidebar">
             <div class="sidebar-header">
                 <h1>ClubConnect</h1>
@@ -581,14 +564,14 @@ $conn->close();
             </div>
 
             <nav class="sidebar-nav">
-                <a href="#" class="nav-item">
+                <a href="home.php" class="nav-item">
                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
                     </svg>
                     <span>Tableau de Bord</span>
                 </a>
 
-                <a href="#" class="nav-item">
+                <a href="discoverevents.php" class="nav-item">
                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
@@ -596,51 +579,42 @@ $conn->close();
                     <span>Découvre les Événements</span>
                 </a>
 
-                <a href="#" class="nav-item">
+                <a href="MyEvents.html" class="nav-item">
                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                     </svg>
                     <span>Mes Événements</span>
                 </a>
 
-                <a href="#" class="nav-item">
+                <a href="createevent.php" class="nav-item">
                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                     </svg>
                     <span>Créer un Événement</span>
                 </a>
 
-                <a href="#" class="nav-item">
+                <a href="MyClubs.html" class="nav-item">
                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
                     </svg>
                     <span>Mes Clubs</span>
                 </a>
 
-                <a href="#" class="nav-item">
+                <a href="communication.php" class="nav-item">
                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
                     </svg>
                     <span>Communications</span>
                 </a>
 
-                <a href="#" class="nav-item active">
+                <a href="certificats.php" class="nav-item active">
                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/>
                     </svg>
                     <span>Certificats</span>
                 </a>
-
-                <a href="#" class="nav-item">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                    </svg>
-                    <span>Paramètres</span>
-                </a>
             </nav>
 
-            <!-- Profil utilisateur dynamique -->
             <div class="user-profile">
                 <div class="user-profile-content">
                     <div class="user-avatar"><?= $initials ?></div>
@@ -652,10 +626,8 @@ $conn->close();
             </div>
         </aside>
 
-    <!-- Main Content -->
     <main class="main-content">
         <div class="content-wrapper">
-            <!-- Header -->
             <div class="page-header">
                 <div class="header-top">
                     <div class="header-title">
@@ -674,7 +646,6 @@ $conn->close();
                 <p class="page-description">Téléchargez les certificats des événements auxquels vous avez participé</p>
             </div>
 
-            <!-- Stats Cards avec données dynamiques -->
             <div class="stats-grid">
                 <div class="stat-card">
                     <div class="stat-header">
@@ -716,7 +687,6 @@ $conn->close();
                 </div>
             </div>
 
-            <!-- Certificates List -->
             <div class="certificates-list">
                 <?php if (count($attestations) > 0): ?>
                     <?php foreach ($attestations as $att): ?>
