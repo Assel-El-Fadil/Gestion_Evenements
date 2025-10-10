@@ -5,44 +5,44 @@ require "database.php";
 $success_message = '';
 $error_message = '';
 
-// Handle form submission
+// Gérer la soumission du formulaire
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         $conn = db_connect();
         
         $conn->set_charset("utf8mb4");
         
-        // Get form data and sanitize
+        // Obtenir et nettoyer les données du formulaire
         $titre = $conn->real_escape_string($_POST['event_title'] ?? '');
         $description = $conn->real_escape_string($_POST['event_description'] ?? '');
         $date = $conn->real_escape_string($_POST['event_date'] ?? '');
         $lieu = $conn->real_escape_string($_POST['event_location'] ?? '');
         $capacite = intval($_POST['event_capacity'] ?? 0);
         $categorie = $conn->real_escape_string($_POST['event_category'] ?? '');
-        $idClub = 1; // Default club ID - in real app, get from user session
+        $idClub = 1; // ID de club par défaut - dans une vraie app, obtenir de la session utilisateur
         
-        // Validate required fields
+        // Valider les champs requis
         if (empty($titre) || empty($description) || empty($date) || empty($lieu) || empty($categorie)) {
-            throw new Exception("Please fill in all required fields.");
+            throw new Exception("Veuillez remplir tous les champs obligatoires.");
         }
         
-        // Insert into database
+        // Insérer dans la base de données
         $sql = "INSERT INTO evenement(titre, description, capacité, date, lieu, photo, statut, nbrParticipants, idClub, categorie) 
                 VALUES (?, ?, ?, ?, ?, '', 'upcoming', 0, ?, ?)";
         
         $stmt = $conn->prepare($sql);
         if (!$stmt) {
-            throw new Exception("Error preparing statement: " . $conn->error);
+            throw new Exception("Erreur de préparation de la requête: " . $conn->error);
         }
         
         $stmt->bind_param("ssisiss", $titre, $description, $capacite, $date, $lieu, $idClub, $categorie);
         
         if ($stmt->execute()) {
-            $success_message = "Event created successfully!";
-            // Clear form data after successful submission
+            $success_message = "Événement créé avec succès !";
+            // Vider les données du formulaire après soumission réussie
             $_POST = array();
         } else {
-            throw new Exception("Error creating event: " . $stmt->error);
+            throw new Exception("Erreur lors de la création de l'événement: " . $stmt->error);
         }
         
         $stmt->close();
@@ -57,38 +57,38 @@ function getFormValue($field) {
     return isset($_POST[$field]) ? htmlspecialchars($_POST[$field]) : '';
 }
 
-// Safe function to format date for display
+// Fonction pour formater la date pour l'affichage
 function getFormattedDate($dateField) {
     if (isset($_POST[$dateField]) && !empty($_POST[$dateField])) {
-        return date('M j, Y', strtotime($_POST[$dateField]));
+        return date('j M Y', strtotime($_POST[$dateField]));
     }
-    return 'Select date';
+    return 'Sélectionner une date';
 }
 
 ?>
 
-<html lang="en">
+<html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ClubConnect - Create Event</title>
+    <title>ClubConnect - Créer un Événement</title>
     <link rel="stylesheet" href="createevent.css">
 </head>
 <body>
     <div class="app-container">
-        <!-- Background Effects -->
+        <!-- Effets d'arrière-plan -->
         <div class="bg-gradient"></div>
         
         <div class="main-layout">
-            <!-- Sidebar -->
+            <!-- Barre latérale -->
             <aside class="sidebar">
-                <!-- Shine Effects -->
+                <!-- Effets de brillance -->
                 <div class="sidebar-shine-1"></div>
                 
                 <!-- Logo -->
                 <div class="logo-section">
                     <h1 class="logo-title">ClubConnect</h1>
-                    <p class="logo-subtitle">Student Dashboard</p>
+                    <p class="logo-subtitle">Tableau de Bord</p>
                 </div>
 
                 <!-- Navigation -->
@@ -98,14 +98,14 @@ function getFormattedDate($dateField) {
                             <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
                             <polyline points="9 22 9 12 15 12 15 22"/>
                         </svg>
-                        <span>Dashboard</span>
+                        <span>Tableau de Bord</span>
                     </a>
                     <a href="#" class="nav-item">
                         <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <circle cx="11" cy="11" r="8"/>
                             <path d="m21 21-4.35-4.35"/>
                         </svg>
-                        <span>Discover Events</span>
+                        <span>Découvrir Événements</span>
                     </a>
                     <a href="#" class="nav-item">
                         <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -114,7 +114,7 @@ function getFormattedDate($dateField) {
                             <line x1="8" y1="2" x2="8" y2="6"/>
                             <line x1="3" y1="10" x2="21" y2="10"/>
                         </svg>
-                        <span>My Events</span>
+                        <span>Mes Événements</span>
                     </a>
                     <a href="createevent.php" class="nav-item active">
                         <div class="active-gradient"></div>
@@ -122,7 +122,7 @@ function getFormattedDate($dateField) {
                             <line x1="12" y1="5" x2="12" y2="19"/>
                             <line x1="5" y1="12" x2="19" y2="12"/>
                         </svg>
-                        <span>Create Event</span>
+                        <span>Créer Événement</span>
                     </a>
                     <a href="#" class="nav-item">
                         <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -131,7 +131,7 @@ function getFormattedDate($dateField) {
                             <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
                             <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
                         </svg>
-                        <span>My Clubs</span>
+                        <span>Mes Clubs</span>
                     </a>
                     <a href="communication.php" class="nav-item">
                         <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -145,11 +145,11 @@ function getFormattedDate($dateField) {
                             <circle cx="12" cy="8" r="6"/>
                             <path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/>
                         </svg>
-                        <span>Certificates</span>
+                        <span>Certificats</span>
                     </a>
                 </nav>
 
-                <!-- User Profile -->
+                <!-- Profil Utilisateur -->
                 <div class="user-profile">
                     <div class="user-gradient"></div>
                     <div class="user-avatar">
@@ -159,22 +159,22 @@ function getFormattedDate($dateField) {
                         </svg>
                     </div>
                     <div class="user-info">
-                        <p class="user-name">John Smith</p>
-                        <p class="user-dept">Computer Science</p>
+                        <p class="user-name">Jean Smith</p>
+                        <p class="user-dept">Informatique</p>
                     </div>
                 </div>
             </aside>
 
-            <!-- Main Content -->
+            <!-- Contenu Principal -->
             <main class="main-content">
                 <div class="form-container">
-                    <!-- Header -->
+                    <!-- En-tête -->
                     <div class="page-header">
-                        <h1 class="page-title">Create New Event</h1>
-                        <p class="page-subtitle">Fill in the details below to create your event</p>
+                        <h1 class="page-title">Créer un Nouvel Événement</h1>
+                        <p class="page-subtitle">Remplissez les détails ci-dessous pour créer votre événement</p>
                     </div>
 
-                    <!-- Success/Error Messages -->
+                    <!-- Messages de Succès/Erreur -->
                     <?php if ($success_message): ?>
                         <div class="message success">
                             <?php echo htmlspecialchars($success_message); ?>
@@ -187,28 +187,28 @@ function getFormattedDate($dateField) {
                         </div>
                     <?php endif; ?>
 
-                    <!-- Form Grid -->
+                    <!-- Grille du Formulaire -->
                     <form method="POST" enctype="multipart/form-data" class="form-grid">
-                        <!-- Left Column - Form Fields -->
+                        <!-- Colonne de Gauche - Champs du Formulaire -->
                         <div class="form-fields">
-                            <!-- Event Title -->
+                            <!-- Titre de l'Événement -->
                             <div class="form-card">
                                 <div class="card-shine-1"></div>
                                 <div class="card-shine-2"></div>
-                                <label class="form-label">Event Title *</label>
-                                <input type="text" name="event_title" class="form-input" placeholder="Enter event title" 
+                                <label class="form-label">Titre de l'Événement *</label>
+                                <input type="text" name="event_title" class="form-input" placeholder="Entrez le titre de l'événement" 
                                        value="<?php echo getFormValue('event_title'); ?>" required>
                             </div>
 
-                            <!-- Event Description -->
+                            <!-- Description de l'Événement -->
                             <div class="form-card">
                                 <div class="card-shine-3"></div>
-                                <label class="form-label">Event Description *</label>
+                                <label class="form-label">Description de l'Événement *</label>
                                 <textarea name="event_description" class="form-textarea" rows="5" 
-                                          placeholder="Describe your event in detail..." required><?php echo getFormValue('event_description'); ?></textarea>
+                                          placeholder="Décrivez votre événement en détail..." required><?php echo getFormValue('event_description'); ?></textarea>
                             </div>
 
-                            <!-- Date Card (Full Width) -->
+                            <!-- Carte Date (Pleine Largeur) -->
                             <div class="form-card">
                                 <div class="card-shine-4"></div>
                                 <label class="form-label label-with-icon">
@@ -218,13 +218,13 @@ function getFormattedDate($dateField) {
                                         <line x1="8" y1="2" x2="8" y2="6"/>
                                         <line x1="3" y1="10" x2="21" y2="10"/>
                                     </svg>
-                                    Event Date *
+                                    Date de l'Événement *
                                 </label>
                                 <input type="date" name="event_date" class="form-input" 
                                        value="<?php echo getFormValue('event_date'); ?>" required>
                             </div>
 
-                            <!-- Location -->
+                            <!-- Lieu -->
                             <div class="form-card">
                                 <div class="card-shine-6"></div>
                                 <label class="form-label label-with-icon">
@@ -232,13 +232,13 @@ function getFormattedDate($dateField) {
                                         <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
                                         <circle cx="12" cy="10" r="3"/>
                                     </svg>
-                                    Location *
+                                    Lieu *
                                 </label>
-                                <input type="text" name="event_location" class="form-input" placeholder="Enter event location or room number"
+                                <input type="text" name="event_location" class="form-input" placeholder="Entrez le lieu ou le numéro de salle"
                                        value="<?php echo getFormValue('event_location'); ?>" required>
                             </div>
 
-                            <!-- Capacity and Category Row -->
+                            <!-- Capacité et Catégorie -->
                             <div class="form-row">
                                 <div class="form-card">
                                     <div class="card-shine-7"></div>
@@ -249,7 +249,7 @@ function getFormattedDate($dateField) {
                                             <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
                                             <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
                                         </svg>
-                                        Max Capacity
+                                        Capacité Maximale
                                     </label>
                                     <input type="number" name="event_capacity" class="form-input" placeholder="50"
                                            value="<?php echo getFormValue('event_capacity'); ?>">
@@ -261,21 +261,21 @@ function getFormattedDate($dateField) {
                                             <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
                                             <line x1="7" y1="7" x2="7.01" y2="7"/>
                                         </svg>
-                                        Category *
+                                        Catégorie *
                                     </label>
                                     <select name="event_category" class="form-select" required>
-                                        <option value="">Select category</option>
-                                        <option value="workshop" <?php echo (getFormValue('event_category') === 'workshop') ? 'selected' : ''; ?>>Workshop</option>
-                                        <option value="seminar" <?php echo (getFormValue('event_category') === 'seminar') ? 'selected' : ''; ?>>Seminar</option>
-                                        <option value="networking" <?php echo (getFormValue('event_category') === 'networking') ? 'selected' : ''; ?>>Networking</option>
+                                        <option value="">Sélectionnez une catégorie</option>
+                                        <option value="workshop" <?php echo (getFormValue('event_category') === 'workshop') ? 'selected' : ''; ?>>Atelier</option>
+                                        <option value="seminar" <?php echo (getFormValue('event_category') === 'seminar') ? 'selected' : ''; ?>>Séminaire</option>
+                                        <option value="networking" <?php echo (getFormValue('event_category') === 'networking') ? 'selected' : ''; ?>>Réseautage</option>
                                         <option value="social" <?php echo (getFormValue('event_category') === 'social') ? 'selected' : ''; ?>>Social</option>
-                                        <option value="competition" <?php echo (getFormValue('event_category') === 'competition') ? 'selected' : ''; ?>>Competition</option>
-                                        <option value="meeting" <?php echo (getFormValue('event_category') === 'meeting') ? 'selected' : ''; ?>>Meeting</option>
+                                        <option value="competition" <?php echo (getFormValue('event_category') === 'competition') ? 'selected' : ''; ?>>Compétition</option>
+                                        <option value="meeting" <?php echo (getFormValue('event_category') === 'meeting') ? 'selected' : ''; ?>>Réunion</option>
                                     </select>
                                 </div>
                             </div>
 
-                            <!-- Organizing Club -->
+                            <!-- Club Organisateur -->
                             <div class="form-card">
                                 <div class="card-shine-10"></div>
                                 <label class="form-label label-with-icon">
@@ -285,11 +285,14 @@ function getFormattedDate($dateField) {
                                         <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
                                         <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
                                     </svg>
-                                    Organizing Club *
+                                    Club Organisateur *
                                 </label>
                                 <select name="event_club" class="form-select" required>
-                                    <option value="">Select a club</option>
-                                    <?php foreach ($clubs as $club): ?>
+                                    <option value="">Sélectionnez un club</option>
+                                    <?php 
+                                    // Récupérer les clubs depuis la base de données
+                                    $clubs = get_user_clubs(1, 10); // ID utilisateur par défaut
+                                    foreach ($clubs as $club): ?>
                                         <option value="<?php echo $club['idClub']; ?>" 
                                                 <?php echo (getFormValue('event_club') == $club['idClub']) ? 'selected' : ''; ?>>
                                             <?php echo htmlspecialchars($club['nom']); ?>
@@ -298,7 +301,7 @@ function getFormattedDate($dateField) {
                                 </select>
                             </div>
 
-                            <!-- Event Image -->
+                            <!-- Image de l'Événement -->
                             <div class="form-card">
                                 <div class="card-shine-9"></div>
                                 <label class="form-label label-with-icon">
@@ -306,31 +309,31 @@ function getFormattedDate($dateField) {
                                         <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
                                         <circle cx="12" cy="13" r="4"/>
                                     </svg>
-                                    Event Image
+                                    Image de l'Événement
                                 </label>
                                 <div class="file-upload">
                                     <svg class="upload-icon" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
                                         <circle cx="12" cy="13" r="4"/>
                                     </svg>
-                                    <p class="upload-text">Drag and drop an image here, or click to browse</p>
-                                    <p class="upload-subtext">PNG, JPG, GIF up to 10MB</p>
+                                    <p class="upload-text">Glissez-déposez une image ici, ou cliquez pour parcourir</p>
+                                    <p class="upload-subtext">PNG, JPG, GIF jusqu'à 10MB</p>
                                     <input type="file" name="event_photo" id="event_photo" accept="image/*" class="file-input" style="display: none;">
-                                    <button type="button" class="upload-button" onclick="document.getElementById('event_photo').click()">Choose File</button>
+                                    <button type="button" class="upload-button" onclick="document.getElementById('event_photo').click()">Choisir un Fichier</button>
                                     
-                                    <!-- File preview -->
+                                    <!-- Aperçu du fichier -->
                                     <div class="file-preview" id="file-preview"></div>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Right Column - Preview -->
+                        <!-- Colonne de Droite - Aperçu -->
                         <div class="preview-column">
-                            <!-- Preview Card -->
+                            <!-- Carte d'Aperçu -->
                             <div class="preview-card">
                                 <div class="preview-shine-1"></div>
                                 <div class="preview-shine-2"></div>
-                                <h3 class="preview-title">Event Preview</h3>
+                                <h3 class="preview-title">Aperçu de l'Événement</h3>
                                 <div class="preview-content">
                                     <div class="preview-image" id="preview-image-container">
                                         <div class="preview-image-shine"></div>
@@ -340,8 +343,8 @@ function getFormattedDate($dateField) {
                                         </svg>
                                     </div>
                                     <div class="preview-text">
-                                        <h4 class="preview-event-title"><?php echo getFormValue('event_title') ?: 'Event Title Here'; ?></h4>
-                                        <p class="preview-event-desc"><?php echo getFormValue('event_description') ?: 'Event description will appear here...'; ?></p>
+                                        <h4 class="preview-event-title"><?php echo getFormValue('event_title') ?: 'Titre de l\'événement ici'; ?></h4>
+                                        <p class="preview-event-desc"><?php echo getFormValue('event_description') ?: 'La description de l\'événement apparaîtra ici...'; ?></p>
                                     </div>
                                     <div class="preview-details">
                                         <div class="preview-detail-item">
@@ -358,14 +361,14 @@ function getFormattedDate($dateField) {
                                                 <circle cx="12" cy="12" r="10"/>
                                                 <polyline points="12 6 12 12 16 14"/>
                                             </svg>
-                                            <span>All day</span>
+                                            <span>Toute la journée</span>
                                         </div>
                                         <div class="preview-detail-item">
                                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                                 <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
                                                 <circle cx="12" cy="10" r="3"/>
                                             </svg>
-                                            <span><?php echo getFormValue('event_location') ?: 'Enter location'; ?></span>
+                                            <span><?php echo getFormValue('event_location') ?: 'Entrez le lieu'; ?></span>
                                         </div>
                                         <div class="preview-detail-item">
                                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -374,19 +377,19 @@ function getFormattedDate($dateField) {
                                                 <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
                                                 <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
                                             </svg>
-                                            <span>0 / <?php echo isset($_POST['event_capacity']) ? intval($_POST['event_capacity']) : 0; ?> attending</span>
+                                            <span>0 / <?php echo isset($_POST['event_capacity']) ? intval($_POST['event_capacity']) : 0; ?> participants</span>
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
-                            <!-- Action Buttons -->
+                            <!-- Boutons d'Action -->
                             <div class="button-group">
                                 <button type="submit" class="btn btn-primary">
                                     <div class="btn-gradient"></div>
-                                    <span>Create Event</span>
+                                    <span>Créer l'Événement</span>
                                 </button>
-                                <a href="home.php" class="btn btn-ghost">Cancel</a>
+                                <a href="home.php" class="btn btn-ghost">Annuler</a>
                             </div>
                         </div>
                     </form>
@@ -396,7 +399,7 @@ function getFormattedDate($dateField) {
     </div>
 
     <script>
-        // Real-time preview update
+        // Mise à jour en temps réel de l'aperçu
         document.addEventListener('DOMContentLoaded', function() {
             const formInputs = document.querySelectorAll('input, textarea, select');
             const fileInput = document.getElementById('event_photo');
@@ -406,24 +409,24 @@ function getFormattedDate($dateField) {
                 input.addEventListener('change', updatePreview);
             });
             
-            // Handle file input change
+            // Gérer le changement de fichier
             fileInput.addEventListener('change', function(e) {
                 const file = e.target.files[0];
                 if (file) {
                     const reader = new FileReader();
                     reader.onload = function(e) {
-                        // Update file preview
+                        // Mettre à jour l'aperçu du fichier
                         const filePreview = document.getElementById('file-preview');
                         filePreview.innerHTML = `
-                            <img src="${e.target.result}" alt="Preview">
+                            <img src="${e.target.result}" alt="Aperçu">
                             <div class="file-name">${file.name}</div>
                         `;
                         
-                        // Update main preview image
+                        // Mettre à jour l'image principale de l'aperçu
                         const previewContainer = document.getElementById('preview-image-container');
                         previewContainer.innerHTML = `
                             <div class="preview-image-shine"></div>
-                            <img src="${e.target.result}" alt="Event Preview" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;">
+                            <img src="${e.target.result}" alt="Aperçu de l'événement" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;">
                         `;
                     };
                     reader.readAsDataURL(file);
@@ -431,29 +434,29 @@ function getFormattedDate($dateField) {
             });
             
             function updatePreview() {
-                const title = document.querySelector('input[name="event_title"]').value || 'Event Title Here';
-                const description = document.querySelector('textarea[name="event_description"]').value || 'Event description will appear here...';
+                const title = document.querySelector('input[name="event_title"]').value || 'Titre de l\'événement ici';
+                const description = document.querySelector('textarea[name="event_description"]').value || 'La description de l\'événement apparaîtra ici...';
                 const date = document.querySelector('input[name="event_date"]').value;
-                const location = document.querySelector('input[name="event_location"]').value || 'Enter location';
+                const location = document.querySelector('input[name="event_location"]').value || 'Entrez le lieu';
                 const capacity = document.querySelector('input[name="event_capacity"]').value || 0;
                 
                 document.querySelector('.preview-event-title').textContent = title;
                 document.querySelector('.preview-event-desc').textContent = description;
                 
-                // Safe date formatting
+                // Formatage sécurisé de la date
                 if (date) {
                     const dateObj = new Date(date + 'T00:00:00');
                     document.querySelector('.preview-detail-item:nth-child(1) span').textContent = 
-                        dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                        dateObj.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
                 } else {
-                    document.querySelector('.preview-detail-item:nth-child(1) span').textContent = 'Select date';
+                    document.querySelector('.preview-detail-item:nth-child(1) span').textContent = 'Sélectionner une date';
                 }
                 
                 document.querySelector('.preview-detail-item:nth-child(3) span').textContent = location;
-                document.querySelector('.preview-detail-item:nth-child(4) span').textContent = `0 / ${capacity} attending`;
+                document.querySelector('.preview-detail-item:nth-child(4) span').textContent = `0 / ${capacity} participants`;
             }
             
-            // Initialize preview on page load
+            // Initialiser l'aperçu au chargement de la page
             updatePreview();
         });
     </script>
