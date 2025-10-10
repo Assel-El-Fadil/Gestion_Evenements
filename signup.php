@@ -14,7 +14,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $dateNaissance = $_POST['dateOfBirth'];
     $email = htmlspecialchars(trim($_POST['institutionalEmail']));
     $apogee = htmlspecialchars(trim($_POST['studentId']));
-    $telephone = htmlspecialchars(trim($_POST['phoneNumber']));
     $annee = htmlspecialchars(trim($_POST['yearOfStudy']));
     $filiere = isset($_POST['fieldOfStudy']) ? htmlspecialchars(trim($_POST['fieldOfStudy'])) : null;
     $mdp = password_hash($_POST['password'], PASSWORD_BCRYPT);
@@ -36,15 +35,15 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
     // --- INSERTION DANS LA TABLE ---
     $stmt = $conn->prepare("
-        INSERT INTO utilisateur (nom, prenom, dateNaissance, telephone, annee, filiere, email, mdp, apogee, role)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO utilisateur (nom, prenom, dateNaissance, annee, filiere, email, mdp, apogee, role)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     ");
 
     if ($stmt === false) {
         die("Erreur de préparation: " . $conn->error);
     }
 
-    $stmt->bind_param("ssssssssss", $nom, $prenom, $dateNaissance, $telephone, $annee, $filiere, $email, $mdp, $apogee, $role);
+    $stmt->bind_param("sssssssss", $nom, $prenom, $dateNaissance, $annee, $filiere, $email, $mdp, $apogee, $role);
 
     if ($stmt->execute()) {
         // Création de cookies valables 1 jour
@@ -403,37 +402,20 @@ db_close();
                     <span class="error" id="institutionalEmailError"></span>
                 </div>
 
-                <!-- Apogée and Phone -->
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="studentId">Apogée</label>
-                        <input 
-                            type="text" 
-                            id="studentId" 
-                            name="studentId" 
-                            placeholder="12345678"
-                            pattern="[0-9]{8}"
-                            title="Veuillez entrer exactement 8 chiffres"
-                            maxlength="8"
-                            required
-                        >
-                        <span class="error" id="studentIdError"></span>
-                    </div>
-
-                    <div class="form-group">
-    <label for="phoneNumber">Numéro de téléphone</label>
-    <input 
-        type="tel" 
-        id="phoneNumber" 
-        name="phoneNumber" 
-        placeholder="+212 6 12 34 56 78"
-        pattern="[0-9]{10}"
-        title="Veuillez entrer exactement 10 chiffres (ex: 0612345678)"
-        maxlength="10"
-        required
-    >
-    <span class="error" id="phoneNumberError"></span>
-</div>
+                <!-- Apogée -->
+                <div class="form-group">
+                    <label for="studentId">Apogée</label>
+                    <input 
+                        type="text" 
+                        id="studentId" 
+                        name="studentId" 
+                        placeholder="12345678"
+                        pattern="[0-9]{8}"
+                        title="Veuillez entrer exactement 8 chiffres"
+                        maxlength="8"
+                        required
+                    >
+                    <span class="error" id="studentIdError"></span>
                 </div>
 
                 <!-- Academic Information -->
@@ -487,7 +469,7 @@ db_close();
             <div class="login-link">
                 <p>
                     Vous avez déjà un compte ?
-                    <a href="login.php">Se connecter</a>
+                    <a href="signin.php">Se connecter</a>
                 </p>
             </div>
         </div>
@@ -539,7 +521,6 @@ db_close();
             const studentId = document.getElementById('studentId').value.trim();
             const yearOfStudy = document.getElementById('yearOfStudy').value;
             const fieldOfStudy = document.getElementById('fieldOfStudy').value;
-            const phoneNumber = document.getElementById('phoneNumber').value.trim();
             const password = document.getElementById('password').value;
 
             // Validation
@@ -572,17 +553,6 @@ db_close();
             if (!studentId) {
                 document.getElementById('studentIdError').textContent = 'L\'Apogée est requis';
                 isValid = false;
-            }
-
-            if (!phoneNumber) {
-                document.getElementById('phoneNumberError').textContent = 'Le numéro de téléphone est requis';
-                isValid = false;
-            } else {
-                const phoneRegex = /^(\+212|0)[5-7][0-9]{8}$/;
-                if (!phoneRegex.test(phoneNumber.replace(/\s/g, ''))) {
-                    document.getElementById('phoneNumberError').textContent = 'Format de téléphone marocain invalide (ex: +212 6 12 34 56 78)';
-                    isValid = false;
-                }
             }
 
             if (!yearOfStudy) {

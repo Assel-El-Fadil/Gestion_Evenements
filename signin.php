@@ -453,7 +453,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     <input type="checkbox" class="checkbox" name="remember">
                     Se souvenir de moi
                 </label>
-                <a href="#" class="forgot-link">Mot de passe oublié ?</a>
             </div>
 
             <button type="submit" class="submit-button">
@@ -464,7 +463,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         <div class="signup-link">
             <p>
                 Vous n'avez pas de compte ? 
-                <a href="#">S'inscrire</a>
+                <a href="signup.php">S'inscrire</a>
             </p>
         </div>
     </div>
