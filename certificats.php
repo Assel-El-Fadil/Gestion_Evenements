@@ -4,7 +4,6 @@ require "database.php";
 $conn = db_connect();
 
 // Récupérer les informations de l'utilisateur connecté
-// Note: Vous devrez adapter cette partie selon votre système d'authentification
 session_start();
 $user_id = $_SESSION['user_id'] ?? 1; // Remplacer par l'ID de l'utilisateur connecté
 
