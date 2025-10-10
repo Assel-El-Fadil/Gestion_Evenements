@@ -1,0 +1,423 @@
+<?php
+// Include PHPMailer classes
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\SMTP;
+use PHPMailer\PHPMailer\Exception;
+
+require 'vendor/autoload.php'; // Adjust path as needed
+require 'database.php';
+
+$success_message = '';
+$error_message = '';
+
+// Handle form submission
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    try {
+        // Get form data
+        $recipient = $_POST['recipient'] ?? '';
+        $recipient_type = $_POST['recipient-type'] ?? 'custom';
+        $subject = $_POST['subject'] ?? '';
+        $message = $_POST['message'] ?? '';
+        
+        // Validate required fields
+        if (empty($subject) || empty($message)) {
+            throw new Exception("Subject and message are required.");
+        }
+        
+        // Get recipients based on type
+        $recipients = [];
+        
+        if ($recipient_type === 'custom' && !empty($recipient)) {
+            $recipients = array_map('trim', explode(',', $recipient));
+        } else {
+            // Get recipients from database based on type
+            $conn = db_connect();
+            
+            $conn->set_charset("utf8mb4");
+            
+            switch ($recipient_type) {
+                case 'all-members':
+                    $sql = "SELECT DISTINCT u.email 
+                            FROM Utilisateur u 
+                            JOIN Adhérence a ON u.idUtilisateur = a.idUtilisateur 
+                            WHERE a.idClub = ?"; // You'll need to set the club ID
+                    $stmt = $conn->prepare($sql);
+                    $club_id = 1; // Default club ID - should be dynamic in production
+                    $stmt->bind_param("i", $club_id);
+                    break;
+                    
+                case 'event-attendees':
+                    $sql = "SELECT DISTINCT u.email 
+                            FROM Utilisateur u 
+                            JOIN Inscription i ON u.idUtilisateur = i.idUtilisateur 
+                            JOIN Événement e ON i.idEvenement = e.idEvenement 
+                            WHERE e.idClub = ?"; // You'll need to set the club ID
+                    $stmt = $conn->prepare($sql);
+                    $club_id = 1; // Default club ID - should be dynamic in production
+                    $stmt->bind_param("i", $club_id);
+                    break;
+                    
+                default:
+                    throw new Exception("Invalid recipient type.");
+            }
+            
+            $stmt->execute();
+            $result = $stmt->get_result();
+            
+            while ($row = $result->fetch_assoc()) {
+                $recipients[] = $row['email'];
+            }
+            
+            $stmt->close();
+            $conn->close();
+            
+            if (empty($recipients)) {
+                throw new Exception("No recipients found for the selected type.");
+            }
+        }
+        
+        // Validate email addresses
+        $valid_recipients = [];
+        foreach ($recipients as $email) {
+            if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                $valid_recipients[] = $email;
+            }
+        }
+        
+        if (empty($valid_recipients)) {
+            throw new Exception("No valid email addresses found.");
+        }
+        
+        // Send emails using PHPMailer
+        $mail = new PHPMailer(true);
+        
+        try {
+            // Server settings
+            $mail->isSMTP();
+            $mail->Host = 'smtp.gmail.com'; // Set your SMTP server
+            $mail->SMTPAuth = true;
+            $mail->Username = 'xassil7@gmail.com'; // Your email
+            $mail->Password = 'ehow xvqr vkyd zmrh'; // Your app password
+            $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+            $mail->Port = 587;
+            
+            // Recipients
+            $mail->setFrom('your-email@gmail.com', 'ClubConnect');
+            $mail->addReplyTo('your-email@gmail.com', 'ClubConnect');
+            
+            // Add recipients
+            foreach ($valid_recipients as $email) {
+                $mail->addBCC($email); // Use BCC to protect recipient privacy
+            }
+            
+            // Content
+            $mail->isHTML(true);
+            $mail->Subject = $subject;
+            $mail->Body = nl2br(htmlspecialchars($message));
+            $mail->AltBody = strip_tags($message);
+            
+            // Send email
+            $mail->send();
+            
+            // Log the email in database
+            $conn = db_connect();
+            if (!$conn->connect_error) {
+                $conn->set_charset("utf8mb4");
+                
+                $user_id = 1; // Default user ID - should be from session in production
+                $sql = "INSERT INTO Email (destinataire, sujet, message, dateEnvoi, idUtilisateur) 
+                        VALUES (?, ?, ?, NOW(), ?)";
+                
+                $stmt = $conn->prepare($sql);
+                $recipient_list = implode(', ', $valid_recipients);
+                $stmt->bind_param("sssi", $recipient_list, $subject, $message, $user_id);
+                $stmt->execute();
+                $stmt->close();
+                $conn->close();
+            }
+            
+            $success_message = "Email sent successfully to " . count($valid_recipients) . " recipients!";
+            
+        } catch (Exception $e) {
+            throw new Exception("Email could not be sent. Error: " . $mail->ErrorInfo);
+        }
+        
+    } catch (Exception $e) {
+        $error_message = $e->getMessage();
+    }
+}
+
+// Safe function to get form data for display
+function getFormValue($field) {
+    return isset($_POST[$field]) ? htmlspecialchars($_POST[$field]) : '';
+}
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClubConnect - Send Email</title>
+    <link rel="stylesheet" href="communication.css">
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h1>ClubConnect</h1>
+            <p>Student Dashboard</p>
+        </div>
+
+        <nav class="nav">
+            <a href="home.php" class="nav-item">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <rect width="18" height="18" x="3" y="4" rx="2" ry="2"/>
+                    <line x1="16" x2="16" y1="2" y2="6"/>
+                    <line x1="8" x2="8" y1="2" y2="6"/>
+                    <line x1="3" x2="21" y1="10" y2="10"/>
+                </svg>
+                <span>Dashboard</span>
+            </a>
+            <a href="#" class="nav-item">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                </svg>
+                <span>Discover Events</span>
+            </a>
+            <a href="#" class="nav-item">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <rect width="18" height="18" x="3" y="4" rx="2" ry="2"/>
+                    <line x1="16" x2="16" y1="2" y2="6"/>
+                    <line x1="8" x2="8" y1="2" y2="6"/>
+                    <line x1="3" x2="21" y1="10" y2="10"/>
+                </svg>
+                <span>My Events</span>
+            </a>
+            <a href="createevent.php" class="nav-item">
+                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                <span>Create Event</span>
+            </a>
+            <a href="#" class="nav-item">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                    <circle cx="9" cy="7" r="4"/>
+                    <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
+                <span>My Clubs</span>
+            </a>
+            <a href="communication.php" class="nav-item active">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                </svg>
+                <span>Communications</span>
+            </a>
+            <a href="#" class="nav-item">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <circle cx="12" cy="8" r="6"/>
+                    <path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/>
+                </svg>
+                <span>Certificates</span>
+            </a>
+        </nav>
+
+        <div class="user-profile">
+            <div class="user-profile-content">
+                <div class="user-avatar">JS</div>
+                <div class="user-info">
+                    <p>John Smith</p>
+                    <p class="user-major">Computer Science</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Header -->
+        <div class="header">
+            <div class="header-left">
+                <button class="back-button" onclick="window.history.back()">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 12H5M12 19l-7-7 7-7"/>
+                    </svg>
+                </button>
+                <div class="header-title">
+                    <h1>Send Email</h1>
+                    <p>Compose and send messages to club members</p>
+                </div>
+            </div>
+            <div class="notification-dot"></div>
+        </div>
+
+        <!-- Success/Error Messages -->
+        <?php if ($success_message): ?>
+            <div class="message success">
+                <?php echo htmlspecialchars($success_message); ?>
+            </div>
+        <?php endif; ?>
+        
+        <?php if ($error_message): ?>
+            <div class="message error">
+                <?php echo htmlspecialchars($error_message); ?>
+            </div>
+        <?php endif; ?>
+
+        <!-- Email Form -->
+        <div class="email-container">
+            <div class="email-form-wrapper">
+                <form method="POST">
+                    <!-- Recipient -->
+                    <div class="form-group">
+                        <label for="recipient" class="form-label">To</label>
+                        <input 
+                            type="text" 
+                            id="recipient" 
+                            name="recipient"
+                            class="form-input" 
+                            placeholder="Enter email addresses (comma separated)"
+                            value="<?php echo getFormValue('recipient'); ?>"
+                        >
+                    </div>
+
+                    <!-- Recipient Type -->
+                    <div class="form-group">
+                        <label class="form-label">Send to</label>
+                        <div class="radio-group">
+                            <label class="radio-label">
+                                <input type="radio" name="recipient-type" value="all-members" class="radio-input"
+                                    <?php echo (getFormValue('recipient-type') === 'all-members') ? 'checked' : ''; ?>>
+                                <span>All Club Members</span>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="recipient-type" value="event-attendees" class="radio-input"
+                                    <?php echo (getFormValue('recipient-type') === 'event-attendees') ? 'checked' : ''; ?>>
+                                <span>Event Attendees</span>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="recipient-type" value="custom" class="radio-input"
+                                    <?php echo (getFormValue('recipient-type') === 'custom' || empty(getFormValue('recipient-type'))) ? 'checked' : ''; ?>>
+                                <span>Custom Recipients</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Subject -->
+                    <div class="form-group">
+                        <label for="subject" class="form-label">Subject</label>
+                        <input 
+                            type="text" 
+                            id="subject" 
+                            name="subject"
+                            class="form-input" 
+                            placeholder="Enter email subject"
+                            value="<?php echo getFormValue('subject'); ?>"
+                            required
+                        >
+                    </div>
+
+                    <!-- Message -->
+                    <div class="form-group">
+                        <label for="message" class="form-label">Message</label>
+                        <textarea 
+                            id="message" 
+                            name="message"
+                            class="form-textarea" 
+                            placeholder="Compose your message..."
+                            required
+                        ><?php echo getFormValue('message'); ?></textarea>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="form-actions">
+                        <div class="actions-left">
+                            <button type="button" class="btn btn-secondary">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+                                </svg>
+                                <span>Attach File</span>
+                            </button>
+                        </div>
+
+                        <div class="actions-right">
+                            <button type="button" class="btn btn-outline">
+                                Save Draft
+                            </button>
+                            <button type="submit" class="btn btn-primary">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="m22 2-7 20-4-9-9-4Z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M22 2 11 13"/>
+                                </svg>
+                                <span>Send Email</span>
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Email Stats -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-card-content">
+                        <div>
+                            <p class="stat-value">156</p>
+                            <p class="stat-label">Total Recipients</p>
+                        </div>
+                        <svg class="stat-icon gray" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                            <circle cx="9" cy="7" r="4"/>
+                            <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                        </svg>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-card-content">
+                        <div>
+                            <p class="stat-value">23</p>
+                            <p class="stat-label">Emails Sent Today</p>
+                        </div>
+                        <svg class="stat-icon green" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="m22 2-7 20-4-9-9-4Z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M22 2 11 13"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Update recipient field based on radio selection
+        document.addEventListener('DOMContentLoaded', function() {
+            const recipientInput = document.getElementById('recipient');
+            const radioButtons = document.querySelectorAll('input[name="recipient-type"]');
+            
+            radioButtons.forEach(radio => {
+                radio.addEventListener('change', function() {
+                    if (this.value === 'custom') {
+                        recipientInput.disabled = false;
+                        recipientInput.placeholder = 'Enter email addresses (comma separated)';
+                    } else {
+                        recipientInput.disabled = true;
+                        recipientInput.placeholder = 'Recipients will be selected automatically';
+                        recipientInput.value = '';
+                    }
+                });
+            });
+            
+            // Initialize based on current selection
+            const selectedRadio = document.querySelector('input[name="recipient-type"]:checked');
+            if (selectedRadio && selectedRadio.value !== 'custom') {
+                recipientInput.disabled = true;
+                recipientInput.placeholder = 'Recipients will be selected automatically';
+            }
+        });
+    </script>
+</body>
+</html>
