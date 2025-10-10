@@ -54,7 +54,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         //ici après sign up on sera dirigé vers captcha.php
         echo "<script>
             alert('Inscription réussie ! Bienvenue $prenom.');
-            window.location.href = 'captcha.php'; 
+            window.location.href = 'home.php'; 
         </script>";
     } else {
         echo "<script>alert('Erreur lors de l\\'inscription: " . addslashes($stmt->error) . "'); window.history.back();</script>";
