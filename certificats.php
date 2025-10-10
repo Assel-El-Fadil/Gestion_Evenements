@@ -1,5 +1,5 @@
 <?php
-require "database.php"; // Connexion à la base de données
+require "database.php"; 
 
 $conn = db_connect();
 
