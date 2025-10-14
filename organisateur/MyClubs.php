@@ -1,3 +1,133 @@
+<?php
+session_start();
+require_once '../database.php';
+
+// Get user ID from session
+$user_id = $_SESSION['user_id'] ?? 1;
+
+if (!$user_id) {
+    header("Location: ../index.php");
+    exit();
+}
+
+// Fetch clubs from database
+try {
+    $conn = db_connect();
+    
+    // Get clubs that the user is a member of
+    $sql = "SELECT c.*, COUNT(e.idEvenement) as event_count 
+            FROM club c 
+            LEFT JOIN evenement e ON c.idClub = e.idClub 
+            LEFT JOIN membre m ON c.idClub = m.idClub 
+            WHERE m.idUtilisateur = ? 
+            GROUP BY c.idClub 
+            ORDER BY c.nom ASC";
+    
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param('i', $user_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    $clubs = [];
+    while ($club = $result->fetch_assoc()) {
+        $club['id'] = $club['idClub'];
+        $club['event_count'] = $club['event_count'] ?? 0;
+        unset($club['idClub']);
+        $clubs[] = $club;
+    }
+    
+    // Calculate stats
+    $total_clubs = count($clubs);
+    $managing_clubs = 0; // You can modify this based on your role logic
+    $member_of_clubs = $total_clubs;
+    
+    $stmt->close();
+    db_close();
+    
+} catch (Exception $e) {
+    $error = "Database error: " . $e->getMessage();
+    $clubs = [];
+    $total_clubs = $managing_clubs = $member_of_clubs = 0;
+}
+
+// Function to get club details by ID
+function getClubDetails($club_id) {
+    try {
+        $conn = db_connect();
+        $stmt = $conn->prepare("SELECT * FROM club WHERE idClub = ?");
+        $stmt->bind_param('i', $club_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        
+        $club = $result->fetch_assoc();
+        if ($club) {
+            $club['id'] = $club['idClub'];
+            unset($club['idClub']);
+        }
+        
+        $stmt->close();
+        db_close();
+        return $club;
+        
+    } catch (Exception $e) {
+        return null;
+    }
+}
+
+// Function to get club events by club ID
+function getClubEvents($club_id) {
+    try {
+        $conn = db_connect();
+        $stmt = $conn->prepare("SELECT * FROM evenement WHERE idClub = ? ORDER BY date ASC");
+        $stmt->bind_param('i', $club_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        
+        $events = [];
+        while ($event = $result->fetch_assoc()) {
+            $event_date = $event['date'];
+            $event['is_upcoming'] = $event_date >= date('Y-m-d');
+            $event['statut'] = $event['is_upcoming'] ? 'upcoming' : 'past';
+            $event['id'] = $event['idEvenement'];
+            $event['nom'] = $event['titre'];
+            $event['date_evenement'] = $event['date'];
+            $event['participants_inscrits'] = $event['nbrParticipants'];
+            $event['capacite_max'] = $event['capacité'];
+            $event['club_id'] = $event['idClub'];
+            unset($event['idEvenement'], $event['titre'], $event['date'], $event['nbrParticipants'], $event['capacité'], $event['idClub']);
+            $events[] = $event;
+        }
+        
+        $stmt->close();
+        db_close();
+        return $events;
+        
+    } catch (Exception $e) {
+        return [];
+    }
+}
+
+// Handle club details request
+if (isset($_GET['club_id'])) {
+    $club_id = intval($_GET['club_id']);
+    $club_details = getClubDetails($club_id);
+    
+    if ($club_details) {
+        echo json_encode($club_details);
+    } else {
+        echo json_encode(['error' => 'Club not found']);
+    }
+    exit();
+}
+
+// Handle club events request
+if (isset($_GET['club_events'])) {
+    $club_id = intval($_GET['club_events']);
+    $club_events = getClubEvents($club_id);
+    echo json_encode($club_events);
+    exit();
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -269,23 +399,9 @@
       border-radius: 8px;
     }
 
-    .blue {
-      background: rgba(59, 130, 246, 0.2);
-      border: 1px solid rgba(59, 130, 246, 0.3);
-      color: #60a5fa;
-    }
-
-    .purple {
-      background: rgba(147, 51, 234, 0.2);
-      border: 1px solid rgba(147, 51, 234, 0.3);
-      color: #a78bfa;
-    }
-
-    .green {
-      background: rgba(34, 197, 94, 0.2);
-      border: 1px solid rgba(34, 197, 94, 0.3);
-      color: #4ade80;
-    }
+    .blue { background: rgba(59, 130, 246, 0.2); border: 1px solid rgba(59, 130, 246, 0.3); color: #60a5fa; }
+    .purple { background: rgba(147, 51, 234, 0.2); border: 1px solid rgba(147, 51, 234, 0.3); color: #a78bfa; }
+    .green { background: rgba(34, 197, 94, 0.2); border: 1px solid rgba(34, 197, 94, 0.3); color: #4ade80; }
 
     .stat-value {
       font-size: 30px;
@@ -331,13 +447,8 @@
       color: #ffffff;
     }
 
-    .tab-content {
-      display: none;
-    }
-
-    .tab-content.active {
-      display: block;
-    }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
 
     /* Club Cards */
     .clubs-grid {
@@ -360,41 +471,39 @@
       border-color: rgba(255, 255, 255, 0.2);
     }
 
-    .club-header {
-      display: flex;
+    .club-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .club-logo { font-size: 32px; display:none; }
+    .club-name { font-size: 18px; font-weight: 500; margin-bottom: 4px; }
+    .club-category { color: #9ca3af; font-size: 14px; }
+    .club-badge { background: rgba(59, 130, 246, 0.2); color: #60a5fa; padding: 2px 8px; border-radius: 6px; font-size: 12px; }
+
+    @media (max-width: 1024px) { .clubs-grid { grid-template-columns: 1fr; } }
+    /* Modal */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.6);
+      display: none;
       align-items: center;
-      justify-content: space-between;
-      margin-bottom: 12px;
+      justify-content: center;
+      z-index: 50;
     }
-
-    .club-logo {
-      font-size: 32px;
+    .modal {
+      width: 90%;
+      max-width: 800px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 12px;
+      backdrop-filter: blur(20px);
+      overflow: hidden;
     }
-
-    .club-name {
-      font-size: 18px;
-      font-weight: 500;
-      margin-bottom: 4px;
-    }
-
-    .club-category {
-      color: #9ca3af;
-      font-size: 14px;
-    }
-
-    .club-badge {
-      background: rgba(59, 130, 246, 0.2);
-      color: #60a5fa;
-      padding: 2px 8px;
-      border-radius: 6px;
-      font-size: 12px;
-    }
-
-    @media (max-width: 1024px) {
-      .clubs-grid {
-        grid-template-columns: 1fr;
-      }
-    }
+    .modal-header { display:flex; justify-content: space-between; align-items:center; padding:16px 20px; border-bottom:1px solid rgba(255,255,255,0.12); }
+    .modal-title { font-size: 18px; font-weight:600; }
+    .modal-close { background: transparent; border: 1px solid rgba(255,255,255,0.2); color:#d1d5db; border-radius:8px; padding:6px 10px; cursor:pointer; }
+    .modal-body { padding: 20px; }
+    .events-list { display:grid; gap:12px; }
+    .event-row { padding:12px; border:1px solid rgba(255,255,255,0.12); border-radius:10px; background: rgba(255,255,255,0.04); display:flex; justify-content:space-between; align-items:center; }
+    .muted { color:#9ca3af; }
   </style>
 </head>
 <body>
@@ -409,9 +518,7 @@
         <button class="nav-item">
           <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
               d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
             />
           </svg>
@@ -421,21 +528,17 @@
         <button class="nav-item">
           <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
               d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
             />
           </svg>
           <span>Discover Events</span>
         </button>
 
-        <button class="nav-item" onclick="window.location.href='MyEvents.html'">
+        <button class="nav-item" onclick="window.location.href='MyEvents.php'">
           <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
               d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
             />
           </svg>
@@ -445,9 +548,7 @@
         <button class="nav-item">
           <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
               d="M12 4v16m8-8H4"
             />
           </svg>
@@ -457,9 +558,7 @@
         <button class="nav-item active">
           <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
               d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
             />
           </svg>
@@ -469,9 +568,7 @@
         <button class="nav-item">
           <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
               d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
             />
           </svg>
@@ -488,7 +585,7 @@
         <button class="nav-item">
           <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
           </svg>
           <span>Settings</span>
         </button>
@@ -562,7 +659,7 @@
                 <p class="stat-label">Total Clubs</p>
                 <div class="stat-icon blue">🏛️</div>
               </div>
-              <p class="stat-value">6</p>
+              <p class="stat-value"><?php echo $total_clubs; ?></p>
               <p class="stat-meta">All time</p>
             </div>
 
@@ -571,7 +668,7 @@
                 <p class="stat-label">Managing</p>
                 <div class="stat-icon purple">⭐</div>
               </div>
-              <p class="stat-value">2</p>
+              <p class="stat-value"><?php echo $managing_clubs; ?></p>
               <p class="stat-meta">Leadership positions</p>
             </div>
 
@@ -580,7 +677,7 @@
                 <p class="stat-label">Member Of</p>
                 <div class="stat-icon green">👥</div>
               </div>
-              <p class="stat-value">4</p>
+              <p class="stat-value"><?php echo $member_of_clubs; ?></p>
               <p class="stat-meta">Active memberships</p>
             </div>
           </div>
@@ -589,117 +686,151 @@
 
       <div class="content-area">
         <div class="tabs-list">
-          <button class="tab-trigger active" onclick="switchTab('all')">
-            All (6)
-          </button>
-          <button class="tab-trigger" onclick="switchTab('managing')">
-            Managing (2)
-          </button>
-          <button class="tab-trigger" onclick="switchTab('member')">
-            Member Of (4)
-          </button>
+          <button class="tab-trigger active" onclick="switchTab('all')">All (<?php echo $total_clubs; ?>)</button>
+          <button class="tab-trigger" onclick="switchTab('managing')">Managing (<?php echo $managing_clubs; ?>)</button>
+          <button class="tab-trigger" onclick="switchTab('member')">Member Of (<?php echo $member_of_clubs; ?>)</button>
         </div>
 
-        <div id="tab-all" class="tab-content active"></div>
-        <div id="tab-managing" class="tab-content"></div>
-        <div id="tab-member" class="tab-content"></div>
+        <!-- All Tab -->
+        <div id="tab-all" class="tab-content active">
+          <div class="clubs-grid">
+            <?php
+            if (empty($clubs)) {
+                echo '<div style="text-align:center; color:#9ca3af; grid-column:1 / -1; padding:24px;">No clubs found</div>';
+            } else {
+                foreach ($clubs as $club) {
+                    echo createClubCardHTML($club);
+                }
+            }
+            ?>
+          </div>
+        </div>
+
+        <!-- Managing Tab -->
+        <div id="tab-managing" class="tab-content">
+          <div class="clubs-grid">
+            <?php
+            $managing_clubs_list = []; // You can filter clubs where user has leadership role
+            if (empty($managing_clubs_list)) {
+                echo '<div style="text-align:center; color:#9ca3af; grid-column:1 / -1; padding:24px;">No managing roles found</div>';
+            } else {
+                foreach ($managing_clubs_list as $club) {
+                    echo createClubCardHTML($club);
+                }
+            }
+            ?>
+          </div>
+        </div>
+
+        <!-- Member Tab -->
+        <div id="tab-member" class="tab-content">
+          <div class="clubs-grid">
+            <?php
+            if (empty($clubs)) {
+                echo '<div style="text-align:center; color:#9ca3af; grid-column:1 / -1; padding:24px;">No club memberships found</div>';
+            } else {
+                foreach ($clubs as $club) {
+                    echo createClubCardHTML($club);
+                }
+            }
+            ?>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 
   <script>
-    const clubs = [
-      {
-        id: 1,
-        name: 'Tech Club',
-        category: 'Technology',
-        role: 'Member',
-        logo: '💻',
-      },
-      {
-        id: 2,
-        name: 'Photography Society',
-        category: 'Arts',
-        role: 'Admin',
-        logo: '📸',
-      },
-      {
-        id: 3,
-        name: 'Debate Club',
-        category: 'Academic',
-        role: 'Member',
-        logo: '🎤',
-      },
-      {
-        id: 4,
-        name: 'Gaming League',
-        category: 'Entertainment',
-        role: 'Member',
-        logo: '🎮',
-      },
-      {
-        id: 5,
-        name: 'Environmental Action',
-        category: 'Social',
-        role: 'Moderator',
-        logo: '🌱',
-      },
-      {
-        id: 6,
-        name: 'Music Collective',
-        category: 'Arts',
-        role: 'Member',
-        logo: '🎵',
-      },
-    ];
-
-    function renderClubs(targetId, filterFn) {
-      const grid = document.createElement('div');
-      grid.className = 'clubs-grid';
-      clubs.filter(filterFn).forEach((club) => {
-        const card = document.createElement('div');
-        card.className = 'club-card';
-        card.innerHTML = `
-          <div class="club-header">
-            <div>
-              <div class="club-logo">${club.logo}</div>
-              <h3 class="club-name">${club.name}</h3>
-              <p class="club-category">${club.category}</p>
-            </div>
-            <span class="club-badge">${club.role}</span>
-          </div>
-        `;
-        card.style.cursor = 'pointer';
-        card.addEventListener('click', () => {
-          window.location.href = 'ClubDetails.html?id=' + club.id;
-        });
-        grid.appendChild(card);
-      });
-      document.getElementById(targetId).innerHTML = '';
-      document.getElementById(targetId).appendChild(grid);
-    }
-
     function switchTab(tab) {
-      document
-        .querySelectorAll('.tab-trigger')
-        .forEach((t) => t.classList.remove('active'));
-      document
-        .querySelectorAll('.tab-content')
-        .forEach((c) => c.classList.remove('active'));
-
-      document
-        .querySelector(`[onclick="switchTab('${tab}')"]`)
-        .classList.add('active');
+      document.querySelectorAll('.tab-trigger').forEach((t) => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach((c) => c.classList.remove('active'));
+      document.querySelector(`[onclick="switchTab('${tab}')"]`).classList.add('active');
       document.getElementById(`tab-${tab}`).classList.add('active');
     }
 
-    // Initial render
-    renderClubs('tab-all', () => true);
-    renderClubs(
-      'tab-managing',
-      (c) => c.role === 'Admin' || c.role === 'Moderator'
-    );
-    renderClubs('tab-member', (c) => c.role === 'Member');
+    async function fetchClub(id) {
+      const res = await fetch('MyClubs.php?club_id=' + encodeURIComponent(id));
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.json();
+    }
+
+    async function fetchClubEvents(id) {
+      const res = await fetch('MyClubs.php?club_events=' + encodeURIComponent(id));
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.json();
+    }
+
+    async function showClubDetails(id) {
+      try {
+        toggleModal(true, '<div class="muted">Loading...</div>');
+        const [club, events] = await Promise.all([fetchClub(id), fetchClubEvents(id)]);
+        const body = `
+          <div style="margin-bottom:12px;">
+            <div class="muted">Members</div>
+            <div style="font-size:22px; font-weight:600;">${club.nbrMembres ?? 0}</div>
+          </div>
+          <div class="muted" style="margin:12px 0 6px;">Events</div>
+          <div class="events-list">
+            ${Array.isArray(events) && events.length > 0 ? events.map(ev => `
+              <div class=\"event-row\">
+                <div>
+                  <div style=\"font-weight:600\">${ev.nom}</div>
+                  <div class=\"muted\">${ev.date_evenement} • ${ev.lieu || 'TBA'}</div>
+                </div>
+                <div class=\"muted\">${ev.participants_inscrits || 0} going</div>
+              </div>
+            `).join('') : '<div class="muted">No events for this club</div>'}
+          </div>
+        `;
+        setModalContent(club.nom || 'Club Details', body);
+      } catch (e) {
+        setModalContent('Error', '<div class="muted">Failed to load club details: ' + e.message + '</div>');
+      }
+    }
+
+    function setModalContent(title, html) {
+      const titleEl = document.getElementById('clubModalTitle');
+      const bodyEl = document.getElementById('clubModalBody');
+      if (titleEl) titleEl.textContent = title;
+      if (bodyEl) bodyEl.innerHTML = html;
+      toggleModal(true);
+    }
+
+    function toggleModal(show, placeholderHtml) {
+      const backdrop = document.getElementById('clubModal');
+      if (!backdrop) return;
+      if (typeof placeholderHtml === 'string') {
+        const bodyEl = document.getElementById('clubModalBody');
+        if (bodyEl) bodyEl.innerHTML = placeholderHtml;
+      }
+      backdrop.style.display = show ? 'flex' : 'none';
+    }
   </script>
+  <!-- Club Details Modal -->
+  <div id="clubModal" class="modal-backdrop" onclick="if(event.target===this) toggleModal(false)">
+    <div class="modal">
+      <div class="modal-header">
+        <div id="clubModalTitle" class="modal-title">Club Details</div>
+        <button class="modal-close" onclick="toggleModal(false)">Close</button>
+      </div>
+      <div id="clubModalBody" class="modal-body"></div>
+    </div>
+  </div>
 </body>
 </html>
+
+<?php
+function createClubCardHTML($club) {
+    return '
+        <div class="club-card" onclick="showClubDetails(' . $club['id'] . ')">
+            <div class="club-header">
+                <div>
+                    <h3 class="club-name">' . htmlspecialchars($club['nom']) . '</h3>
+                    <p class="club-category">Events: ' . ($club['event_count'] ?? 0) . '</p>
+                </div>
+                <span class="club-badge">Members: ' . ($club['nbrMembres'] ?? 0) . '</span>
+            </div>
+        </div>
+    ';
+}
+?>
