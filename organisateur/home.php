@@ -1,6 +1,6 @@
 <?php
 
-require "database.php";
+require "../database.php";
 
 $current_user_id = 1;
 $upcoming_events = get_upcoming_events(5);
@@ -39,7 +39,7 @@ $user_clubs = get_user_clubs($current_user_id, 2);
                     </svg>
                     <span>Découvrir Événements</span>
                 </a>
-                <a href="MyEvents.html" class="nav-item">
+                <a href="MyEvents.php" class="nav-item">
                     <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
                         <line x1="16" y1="2" x2="16" y2="6"></line>
@@ -55,7 +55,7 @@ $user_clubs = get_user_clubs($current_user_id, 2);
                     </svg>
                     <span>Créer Événement</span>
                 </a>
-                <a href="MyClubs.html" class="nav-item">
+                <a href="MyClubs.php" class="nav-item">
                     <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
                         <circle cx="9" cy="7" r="4"></circle>

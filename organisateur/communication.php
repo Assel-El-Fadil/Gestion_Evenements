@@ -1,10 +1,11 @@
 <?php
+
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\SMTP;
 use PHPMailer\PHPMailer\Exception;
 
 require 'vendor/autoload.php';
-require 'database.php';
+require '../database.php';
 
 $success_message = '';
 $error_message = '';
@@ -17,7 +18,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $message = $_POST['message'] ?? '';
         
         if (empty($subject) || empty($message)) {
-            throw new Exception("Subject and message are required.");
+            throw new Exception("Le sujet et le message sont obligatoires.");
         }
         
         $recipients = [];
@@ -52,7 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     break;
                     
                 default:
-                    throw new Exception("Invalid recipient type.");
+                    throw new Exception("Type de destinataire invalide.");
             }
             
             $stmt->execute();
@@ -66,7 +67,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $conn->close();
             
             if (empty($recipients)) {
-                throw new Exception("No recipients found for the selected type.");
+                throw new Exception("Aucun destinataire trouvé pour le type sélectionné.");
             }
         }
         
@@ -78,7 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         
         if (empty($valid_recipients)) {
-            throw new Exception("No valid email addresses found.");
+            throw new Exception("Aucune adresse email valide trouvée.");
         }
         
         $mail = new PHPMailer(true);
@@ -92,8 +93,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
             $mail->Port = 587;
             
-            $mail->setFrom('user@gmail.com', 'ClubConnect');
-            $mail->addReplyTo('user@gmail.com', 'ClubConnect');
+            $mail->setFrom('xassil7@gmail.com', 'ClubConnect');
+            $mail->addReplyTo('xassil7@gmail.com', 'ClubConnect');
             
             foreach ($valid_recipients as $email) {
                 $mail->addBCC($email);
@@ -122,10 +123,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $conn->close();
             }
             
-            $success_message = "Email sent successfully to " . count($valid_recipients) . " recipients!";
+            $success_message = "Email envoyé avec succès à " . count($valid_recipients) . " destinataires !";
             
         } catch (Exception $e) {
-            throw new Exception("Email could not be sent. Error: " . $mail->ErrorInfo);
+            throw new Exception("L'email n'a pas pu être envoyé. Erreur: " . $mail->ErrorInfo);
         }
         
     } catch (Exception $e) {
@@ -138,18 +139,18 @@ function getFormValue($field) {
 }
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ClubConnect - Send Email</title>
+    <title>ClubConnect - Envoyer un Email</title>
     <link rel="stylesheet" href="communication.css">
 </head>
 <body>
     <div class="sidebar">
         <div class="sidebar-header">
             <h1>ClubConnect</h1>
-            <p>Student Dashboard</p>
+            <p>Tableau de Bord</p>
         </div>
 
         <nav class="nav">
@@ -160,39 +161,39 @@ function getFormValue($field) {
                     <line x1="8" x2="8" y1="2" y2="6"/>
                     <line x1="3" x2="21" y1="10" y2="10"/>
                 </svg>
-                <span>Dashboard</span>
+                <span>Tableau de Bord</span>
             </a>
             <a href="discoverevents.php" class="nav-item">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
                     <circle cx="12" cy="12" r="3"/>
                 </svg>
-                <span>Discover Events</span>
+                <span>Découvrir Événements</span>
             </a>
-            <a href="#" class="nav-item">
+            <a href="MyEvents.php" class="nav-item">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <rect width="18" height="18" x="3" y="4" rx="2" ry="2"/>
                     <line x1="16" x2="16" y1="2" y2="6"/>
                     <line x1="8" x2="8" y1="2" y2="6"/>
                     <line x1="3" x2="21" y1="10" y2="10"/>
                 </svg>
-                <span>My Events</span>
+                <span>Mes Événements</span>
             </a>
             <a href="createevent.php" class="nav-item">
                 <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <line x1="12" y1="5" x2="12" y2="19"></line>
                     <line x1="5" y1="12" x2="19" y2="12"></line>
                 </svg>
-                <span>Create Event</span>
+                <span>Créer Événement</span>
             </a>
-            <a href="#" class="nav-item">
+            <a href="MyClubs.php" class="nav-item">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
                     <circle cx="9" cy="7" r="4"/>
                     <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
                     <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
                 </svg>
-                <span>My Clubs</span>
+                <span>Mes Clubs</span>
             </a>
             <a href="communication.php" class="nav-item active">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -205,7 +206,7 @@ function getFormValue($field) {
                     <circle cx="12" cy="8" r="6"/>
                     <path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/>
                 </svg>
-                <span>Certificates</span>
+                <span>Certificats</span>
             </a>
         </nav>
 
@@ -213,8 +214,8 @@ function getFormValue($field) {
             <div class="user-profile-content">
                 <div class="user-avatar">JS</div>
                 <div class="user-info">
-                    <p>John Smith</p>
-                    <p class="user-major">Computer Science</p>
+                    <p>Jean Smith</p>
+                    <p class="user-major">Informatique</p>
                 </div>
             </div>
         </div>
@@ -229,8 +230,8 @@ function getFormValue($field) {
                     </svg>
                 </button>
                 <div class="header-title">
-                    <h1>Send Email</h1>
-                    <p>Compose and send messages to club members</p>
+                    <h1>Envoyer un Email</h1>
+                    <p>Composez et envoyez des messages aux membres du club</p>
                 </div>
             </div>
             <div class="notification-dot"></div>
@@ -252,46 +253,46 @@ function getFormValue($field) {
             <div class="email-form-wrapper">
                 <form method="POST">
                     <div class="form-group">
-                        <label for="recipient" class="form-label">To</label>
+                        <label for="recipient" class="form-label">À</label>
                         <input 
                             type="text" 
                             id="recipient" 
                             name="recipient"
                             class="form-input" 
-                            placeholder="Enter email addresses (comma separated)"
+                            placeholder="Entrez les adresses email (séparées par des virgules)"
                             value="<?php echo getFormValue('recipient'); ?>"
                         >
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label">Send to</label>
+                        <label class="form-label">Envoyer à</label>
                         <div class="radio-group">
                             <label class="radio-label">
                                 <input type="radio" name="recipient-type" value="all-members" class="radio-input"
                                     <?php echo (getFormValue('recipient-type') === 'all-members') ? 'checked' : ''; ?>>
-                                <span>All Club Members</span>
+                                <span>Tous les Membres du Club</span>
                             </label>
                             <label class="radio-label">
                                 <input type="radio" name="recipient-type" value="event-attendees" class="radio-input"
                                     <?php echo (getFormValue('recipient-type') === 'event-attendees') ? 'checked' : ''; ?>>
-                                <span>Event Attendees</span>
+                                <span>Participants aux Événements</span>
                             </label>
                             <label class="radio-label">
                                 <input type="radio" name="recipient-type" value="custom" class="radio-input"
                                     <?php echo (getFormValue('recipient-type') === 'custom' || empty(getFormValue('recipient-type'))) ? 'checked' : ''; ?>>
-                                <span>Custom Recipients</span>
+                                <span>Destinataires Personnalisés</span>
                             </label>
                         </div>
                     </div>
 
                     <div class="form-group">
-                        <label for="subject" class="form-label">Subject</label>
+                        <label for="subject" class="form-label">Sujet</label>
                         <input 
                             type="text" 
                             id="subject" 
                             name="subject"
                             class="form-input" 
-                            placeholder="Enter email subject"
+                            placeholder="Entrez le sujet de l'email"
                             value="<?php echo getFormValue('subject'); ?>"
                             required
                         >
@@ -303,7 +304,7 @@ function getFormValue($field) {
                             id="message" 
                             name="message"
                             class="form-textarea" 
-                            placeholder="Compose your message..."
+                            placeholder="Composez votre message..."
                             required
                         ><?php echo getFormValue('message'); ?></textarea>
                     </div>
@@ -314,20 +315,20 @@ function getFormValue($field) {
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
                                 </svg>
-                                <span>Attach File</span>
+                                <span>Joindre un Fichier</span>
                             </button>
                         </div>
 
                         <div class="actions-right">
                             <button type="button" class="btn btn-outline">
-                                Save Draft
+                                Sauvegarder le Brouillon
                             </button>
                             <button type="submit" class="btn btn-primary">
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="m22 2-7 20-4-9-9-4Z"/>
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M22 2 11 13"/>
                                 </svg>
-                                <span>Send Email</span>
+                                <span>Envoyer l'Email</span>
                             </button>
                         </div>
                     </div>
@@ -339,7 +340,7 @@ function getFormValue($field) {
                     <div class="stat-card-content">
                         <div>
                             <p class="stat-value">156</p>
-                            <p class="stat-label">Total Recipients</p>
+                            <p class="stat-label">Destinataires Totaux</p>
                         </div>
                         <svg class="stat-icon gray" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
@@ -354,7 +355,7 @@ function getFormValue($field) {
                     <div class="stat-card-content">
                         <div>
                             <p class="stat-value">23</p>
-                            <p class="stat-label">Emails Sent Today</p>
+                            <p class="stat-label">Emails Envoyés Aujourd'hui</p>
                         </div>
                         <svg class="stat-icon green" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="m22 2-7 20-4-9-9-4Z"/>
@@ -375,10 +376,10 @@ function getFormValue($field) {
                 radio.addEventListener('change', function() {
                     if (this.value === 'custom') {
                         recipientInput.disabled = false;
-                        recipientInput.placeholder = 'Enter email addresses (comma separated)';
+                        recipientInput.placeholder = 'Entrez les adresses email (séparées par des virgules)';
                     } else {
                         recipientInput.disabled = true;
-                        recipientInput.placeholder = 'Recipients will be selected automatically';
+                        recipientInput.placeholder = 'Les destinataires seront sélectionnés automatiquement';
                         recipientInput.value = '';
                     }
                 });
@@ -387,7 +388,7 @@ function getFormValue($field) {
             const selectedRadio = document.querySelector('input[name="recipient-type"]:checked');
             if (selectedRadio && selectedRadio.value !== 'custom') {
                 recipientInput.disabled = true;
-                recipientInput.placeholder = 'Recipients will be selected automatically';
+                recipientInput.placeholder = 'Les destinataires seront sélectionnés automatiquement';
             }
         });
     </script>

@@ -1,9 +1,6 @@
 <?php
 
-$db_host = 'localhost';
-$db_username = 'root';
-$db_password = '';
-$db_name = 'clubevents';
+require_once "configure.php";
 
 $db_connection = null;
 

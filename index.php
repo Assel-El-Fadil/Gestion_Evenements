@@ -24,7 +24,23 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $_SESSION["user_role"] = $role;
             $_SESSION["user_name"] = $nom . " " . $prenom;
 
-            header("Location: home.php");
+            // Redirect based on user role
+            switch($role) {
+                case 'organisateur':
+                    header("Location: organisateur/home.php");
+                    break;
+                case 'utilisateur':
+                    header("Location: utilisateur/home.php");
+                    break;
+                case 'admin':
+                    // Admin page not created yet - redirect to default or show message
+                    header("Location: organisateur/home.php"); // Temporary redirect
+                    break;
+                default:
+                    // Default fallback
+                    header("Location: utilisateur/home.php");
+                    break;
+            }
             exit();
         } else {
             $login_error = "Mot de passe incorrect.";

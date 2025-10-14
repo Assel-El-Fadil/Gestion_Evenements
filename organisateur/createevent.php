@@ -1,6 +1,6 @@
 <?php
 
-require "database.php";
+require "../database.php";
 
 $success_message = '';
 $error_message = '';
@@ -96,7 +96,7 @@ function getFormattedDate($dateField) {
                         </svg>
                         <span>Découvrir Événements</span>
                     </a>
-                    <a href="#" class="nav-item">
+                    <a href="MyEvents.php" class="nav-item">
                         <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
                             <line x1="16" y1="2" x2="16" y2="6"/>
@@ -113,7 +113,7 @@ function getFormattedDate($dateField) {
                         </svg>
                         <span>Créer Événement</span>
                     </a>
-                    <a href="#" class="nav-item">
+                    <a href="MyClubs.php" class="nav-item">
                         <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
                             <circle cx="9" cy="7" r="4"/>
