@@ -606,6 +606,42 @@ $conn->close();
                 justify-content: center;
             }
         }
+        /* Canonical Sidebar Overrides */
+        .sidebar {
+            width: 256px;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-left: none;
+            border-top: none;
+            border-bottom: none;
+            border-radius: 0 1rem 1rem 0;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .sidebar-header { margin-bottom: 2rem; }
+        .sidebar-title { font-size: 1.5rem; font-weight: 700; color: #ffffff; line-height: 1.5; margin-bottom: 0.25rem; }
+        .sidebar-subtitle { font-size: 0.875rem; color: #9ca3af; font-weight: 400; line-height: 1.5; }
+
+        .sidebar-nav { flex: 1; display: flex; flex-direction: column; gap: 0.5rem; }
+        .nav-item { display: flex; align-items: center; width: 100%; padding: 0.5rem 1rem; border-radius: 0.375rem; text-decoration: none; color: #d1d5db; font-size: 1rem; font-weight: 500; line-height: 1.5; transition: all 0.2s; border: 1px solid transparent; gap: 0; }
+        .nav-item:hover { background: rgba(255, 255, 255, 0.1); color: #ffffff; }
+        .nav-item-active, .nav-item.active { background: rgba(255, 255, 255, 0.2); color: #ffffff; border: 1px solid rgba(255, 255, 255, 0.3); }
+        .nav-icon { width: 1.25rem; height: 1.25rem; margin-right: 0.75rem; flex-shrink: 0; }
+
+        .sidebar-profile { margin-top: auto; }
+        .profile-card { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 0.75rem; padding: 1rem; display: flex; align-items: center; gap: 0.75rem; }
+        .profile-avatar { width: 2.5rem; height: 2.5rem; background: linear-gradient(to right, #3b82f6, #9333ea); border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .profile-avatar span { color: #ffffff; font-weight: 600; font-size: 1rem; }
+        .profile-info { flex: 1; }
+        .profile-name { color: #ffffff; font-weight: 500; font-size: 1rem; line-height: 1.5; }
+        .profile-department { color: #9ca3af; font-size: 0.875rem; line-height: 1.5; }
     </style>
     </head>
     <body>
