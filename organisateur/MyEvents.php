@@ -14,16 +14,29 @@ if (!$user_id) {
 try {
     $conn = db_connect();
     
-    // Get events that the user is registered for
+    // Global counters from evenement table
+    $total_sql = "SELECT COUNT(*) AS total FROM evenement";
+    $total_res = $conn->query($total_sql);
+    $total_row = $total_res ? $total_res->fetch_assoc() : ['total' => 0];
+    $total_count = (int)($total_row['total'] ?? 0);
+
+    $upcoming_sql = "SELECT COUNT(*) AS cnt FROM evenement WHERE date >= CURDATE()";
+    $upcoming_res = $conn->query($upcoming_sql);
+    $upcoming_row = $upcoming_res ? $upcoming_res->fetch_assoc() : ['cnt' => 0];
+    $upcoming_count = (int)($upcoming_row['cnt'] ?? 0);
+
+    $past_sql = "SELECT COUNT(*) AS cnt FROM evenement WHERE date < CURDATE()";
+    $past_res = $conn->query($past_sql);
+    $past_row = $past_res ? $past_res->fetch_assoc() : ['cnt' => 0];
+    $past_count = (int)($past_row['cnt'] ?? 0);
+
+    // Load ALL events to populate the bottom lists
     $sql = "SELECT e.*, c.nom as club_nom 
             FROM evenement e 
             LEFT JOIN club c ON e.idClub = c.idClub 
-            LEFT JOIN inscription i ON e.idEvenement = i.idEvenement 
-            WHERE i.idUtilisateur = ? 
             ORDER BY e.date ASC";
     
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param('i', $user_id);
     $stmt->execute();
     $result = $stmt->get_result();
     
@@ -42,18 +55,7 @@ try {
         $events[] = $event;
     }
     
-    // Calculate stats
-    $total_events = count($events);
-    $upcoming_events = array_filter($events, function($event) {
-        return $event['is_upcoming'];
-    });
-    $past_events = array_filter($events, function($event) {
-        return !$event['is_upcoming'];
-    });
-    
-    $total_count = $total_events;
-    $upcoming_count = count($upcoming_events);
-    $past_count = count($past_events);
+    // $events contains only the user's events; counters above are global
     
     $stmt->close();
     db_close();
@@ -860,7 +862,7 @@ if (isset($_GET['event_id'])) {
                     <div class="events-grid">
                         <?php
                         $upcoming_events = array_filter($events, function($event) {
-                            return $event['is_upcoming'];
+                            return isset($event['is_upcoming']) && $event['is_upcoming'];
                         });
                         
                         if (empty($upcoming_events)) {
@@ -879,7 +881,7 @@ if (isset($_GET['event_id'])) {
                     <div class="events-grid">
                         <?php
                         $past_events = array_filter($events, function($event) {
-                            return !$event['is_upcoming'];
+                            return isset($event['is_upcoming']) && !$event['is_upcoming'];
                         });
                         
                         if (empty($past_events)) {
@@ -996,8 +998,13 @@ if (isset($_GET['event_id'])) {
 
 <?php
 function createEventCardHTML($event) {
-    $dateObj = new Date($event['date_evenement']);
-    $formattedDate = $dateObj->format('M j, Y');
+    $formattedDate = '';
+    try {
+        $dateObj = new DateTime($event['date_evenement']);
+        $formattedDate = $dateObj->format('M j, Y');
+    } catch (Exception $ex) {
+        $formattedDate = htmlspecialchars($event['date_evenement'] ?? '');
+    }
     $formattedTime = '2:00 PM'; // You can extract this from your database if available
     
     $badge_class = $event['statut'] === 'upcoming' ? 'workshop' : 'seminar';
