@@ -84,6 +84,7 @@ db_close();
             overflow-x: hidden;
         }
 
+        /* Background layers */
         .bg-gradient {
             position: absolute;
             inset: 0;
@@ -91,6 +92,7 @@ db_close();
             z-index: 0;
         }
 
+        /* Animated orbs */
         .orb {
             position: absolute;
             border-radius: 50%;
@@ -131,6 +133,7 @@ db_close();
             z-index: 10;
         }
 
+        /* Header */
         .header {
             margin-bottom: 2rem;
             text-align: center;
@@ -148,6 +151,7 @@ db_close();
             color: #9ca3af;
         }
 
+        /* Main card */
         .card {
             background-color: rgba(0, 0, 0, 0.3);
             backdrop-filter: blur(24px);
@@ -173,6 +177,7 @@ db_close();
             color: rgba(209, 213, 219, 0.8);
         }
 
+        /* Form */
         form {
             display: flex;
             flex-direction: column;
@@ -234,16 +239,19 @@ db_close();
             color: #ffffff;
         }
 
+        /* Error messages */
         .error {
             font-size: 0.75rem;
             color: #f87171;
             margin-top: -0.25rem;
         }
 
+        /* Hidden field */
         .hidden {
             display: none;
         }
 
+        /* Submit button */
         button[type="submit"] {
             width: 100%;
             padding: 0.875rem;
@@ -268,6 +276,7 @@ db_close();
             transform: scale(0.98);
         }
 
+        /* Login link */
         .login-link {
             text-align: center;
             margin-top: 1.5rem;
@@ -287,11 +296,13 @@ db_close();
             text-underline-offset: 4px;
         }
 
+        /* Date input styling */
         input[type="date"]::-webkit-calendar-picker-indicator {
             filter: invert(1);
             cursor: pointer;
         }
 
+        /* Responsive */
         @media (max-width: 640px) {
             .form-row {
                 grid-template-columns: 1fr;

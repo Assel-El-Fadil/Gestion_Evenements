@@ -89,6 +89,59 @@ $conn->close();
         }
 
         body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: #000000;
+            color: #ffffff;
+            min-height: 100vh;
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* Background layers */
+        .bg-gradient {
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(to bottom right, #000000, rgba(17, 24, 39, 0.5), #000000);
+            z-index: -2;
+        }
+
+        /* Animated orbs */
+        .orb {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(96px);
+            animation: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+            z-index: -1;
+        }
+
+        .orb-1 {
+            top: 25%;
+            left: 25%;
+            width: 384px;
+            height: 384px;
+            background-color: rgba(59, 130, 246, 0.1);
+        }
+
+        .orb-2 {
+            bottom: 25%;
+            right: 25%;
+            width: 384px;
+            height: 384px;
+            background-color: rgba(168, 85, 247, 0.1);
+            animation-delay: 1s;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
             background-color: #0a0a0f;
             color: #ffffff;
@@ -553,74 +606,125 @@ $conn->close();
                 justify-content: center;
             }
         }
+        /* Canonical Sidebar Overrides */
+        .sidebar {
+            width: 256px;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-left: none;
+            border-top: none;
+            border-bottom: none;
+            border-radius: 0 1rem 1rem 0;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .sidebar-header { margin-bottom: 2rem; }
+        .sidebar-title { font-size: 1.5rem; font-weight: 700; color: #ffffff; line-height: 1.5; margin-bottom: 0.25rem; }
+        .sidebar-subtitle { font-size: 0.875rem; color: #9ca3af; font-weight: 400; line-height: 1.5; }
+
+        .sidebar-nav { flex: 1; display: flex; flex-direction: column; gap: 0.5rem; }
+        .nav-item { display: flex; align-items: center; width: 100%; padding: 0.5rem 1rem; border-radius: 0.375rem; text-decoration: none; color: #d1d5db; font-size: 1rem; font-weight: 500; line-height: 1.5; transition: all 0.2s; border: 1px solid transparent; gap: 0; }
+        .nav-item:hover { background: rgba(255, 255, 255, 0.1); color: #ffffff; }
+        .nav-item-active, .nav-item.active { background: rgba(255, 255, 255, 0.2); color: #ffffff; border: 1px solid rgba(255, 255, 255, 0.3); }
+        .nav-icon { width: 1.25rem; height: 1.25rem; margin-right: 0.75rem; flex-shrink: 0; }
+
+        .sidebar-profile { margin-top: auto; }
+        .profile-card { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 0.75rem; padding: 1rem; display: flex; align-items: center; gap: 0.75rem; }
+        .profile-avatar { width: 2.5rem; height: 2.5rem; background: linear-gradient(to right, #3b82f6, #9333ea); border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .profile-avatar span { color: #ffffff; font-weight: 600; font-size: 1rem; }
+        .profile-info { flex: 1; }
+        .profile-name { color: #ffffff; font-weight: 500; font-size: 1rem; line-height: 1.5; }
+        .profile-department { color: #9ca3af; font-size: 0.875rem; line-height: 1.5; }
     </style>
-</head>
-<body>
+    </head>
+    <body>
+        <div class="bg-gradient"></div>
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
 <div class="container">
     <aside class="sidebar">
             <div class="sidebar-header">
-                <h1>ClubConnect</h1>
-                <p>Tableau de Bord Étudiant</p>
+                <h1 class="sidebar-title">ClubConnect</h1>
+                <p class="sidebar-subtitle">Tableau de Bord Étudiant</p>
             </div>
 
             <nav class="sidebar-nav">
                 <a href="home.php" class="nav-item">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                        <polyline points="9 22 9 12 15 12 15 22"></polyline>
                     </svg>
                     <span>Tableau de Bord</span>
                 </a>
 
                 <a href="discoverevents.php" class="nav-item">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <path d="m21 21-4.35-4.35"></path>
                     </svg>
-                    <span>Découvre les Événements</span>
+                    <span>Découvrir Événements</span>
                 </a>
 
                 <a href="MyEvents.php" class="nav-item">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                        <line x1="16" y1="2" x2="16" y2="6"></line>
+                        <line x1="8" y1="2" x2="8" y2="6"></line>
+                        <line x1="3" y1="10" x2="21" y2="10"></line>
                     </svg>
                     <span>Mes Événements</span>
                 </a>
 
                 <a href="createevent.php" class="nav-item">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
                     </svg>
-                    <span>Créer un Événement</span>
+                    <span>Créer Événement</span>
                 </a>
 
                 <a href="MyClubs.php" class="nav-item">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
                     </svg>
                     <span>Mes Clubs</span>
                 </a>
 
                 <a href="communication.php" class="nav-item">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                        <polyline points="22,6 12,13 2,6"></polyline>
                     </svg>
                     <span>Communications</span>
                 </a>
 
-                <a href="certificats.php" class="nav-item active">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/>
+                <a href="certificats.php" class="nav-item nav-item-active">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="8" r="7"></circle>
+                        <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline>
                     </svg>
                     <span>Certificats</span>
                 </a>
             </nav>
 
-            <div class="user-profile">
-                <div class="user-profile-content">
-                    <div class="user-avatar"><?= $initials ?></div>
-                    <div class="user-info">
-                        <h3><?= htmlspecialchars($user['prenom'] . ' ' . $user['nom']) ?></h3>
-                        <p><?= htmlspecialchars($user['filiere']) ?></p>
+            <div class="sidebar-profile">
+                <div class="profile-card">
+                    <div class="profile-avatar">
+                        <span>JS</span>
+                    </div>
+                    <div class="profile-info">
+                        <p class="profile-name">Jean Smith</p>
+                        <p class="profile-department">Informatique</p>
                     </div>
                 </div>
             </div>
