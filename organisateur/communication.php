@@ -4,18 +4,75 @@ use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\SMTP;
 use PHPMailer\PHPMailer\Exception;
 
+session_start();
 require 'vendor/autoload.php';
 require '../database.php';
 
 $success_message = '';
 $error_message = '';
+$user_id = $_SESSION['user_id'] ?? 1;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
-        $recipient = $_POST['recipient'] ?? '';
-        $recipient_type = $_POST['recipient-type'] ?? 'custom';
-        $subject = $_POST['subject'] ?? '';
-        $message = $_POST['message'] ?? '';
+        // Handle approval/rejection of join requests
+        if (isset($_POST['request_action'], $_POST['req_user_id'], $_POST['req_club_id'])) {
+            $action = $_POST['request_action'];
+            $reqUserId = intval($_POST['req_user_id']);
+            $reqClubId = intval($_POST['req_club_id']);
+
+            $conn = db_connect();
+            $conn->set_charset('utf8mb4');
+
+            // Verify current user is organiser of this club
+            $authStmt = $conn->prepare("SELECT 1 FROM adherence WHERE idUtilisateur = ? AND idClub = ? AND position = 'organisateur' LIMIT 1");
+            $authStmt->bind_param('ii', $user_id, $reqClubId);
+            $authStmt->execute();
+            $isOrganiser = $authStmt->get_result()->num_rows > 0;
+            $authStmt->close();
+
+            if (!$isOrganiser) {
+                throw new Exception("Action non autorisée: vous n'êtes pas organisateur de ce club.");
+            }
+
+            if ($action === 'approve') {
+                // Add to adherence if not already present
+                $chkStmt = $conn->prepare("SELECT 1 FROM adherence WHERE idUtilisateur = ? AND idClub = ? LIMIT 1");
+                $chkStmt->bind_param('ii', $reqUserId, $reqClubId);
+                $chkStmt->execute();
+                $alreadyMember = $chkStmt->get_result()->num_rows > 0;
+                $chkStmt->close();
+
+                if (!$alreadyMember) {
+                    $insStmt = $conn->prepare("INSERT INTO adherence (idUtilisateur, idClub, position) VALUES (?, ?, 'membre')");
+                    $insStmt->bind_param('ii', $reqUserId, $reqClubId);
+                    $insStmt->execute();
+                    $insStmt->close();
+                }
+
+                // Remove from requete
+                $delStmt = $conn->prepare("DELETE FROM requete WHERE idUtilisateur = ? AND idClub = ?");
+                $delStmt->bind_param('ii', $reqUserId, $reqClubId);
+                $delStmt->execute();
+                $delStmt->close();
+
+                $success_message = "Requête approuvée et membre ajouté.";
+            } elseif ($action === 'reject') {
+                // Just remove from requete
+                $delStmt = $conn->prepare("DELETE FROM requete WHERE idUtilisateur = ? AND idClub = ?");
+                $delStmt->bind_param('ii', $reqUserId, $reqClubId);
+                $delStmt->execute();
+                $delStmt->close();
+                $success_message = "Requête rejetée et supprimée.";
+            } else {
+                throw new Exception("Action de requête invalide.");
+            }
+
+            // Skip email handling for this post
+        } else {
+            $recipient = $_POST['recipient'] ?? '';
+            $recipient_type = $_POST['recipient-type'] ?? 'custom';
+            $subject = $_POST['subject'] ?? '';
+            $message = $_POST['message'] ?? '';
         
         if (empty($subject) || empty($message)) {
             throw new Exception("Le sujet et le message sont obligatoires.");
@@ -111,7 +168,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!$conn->connect_error) {
                 $conn->set_charset("utf8mb4");
                 
-                $user_id = 1;
                 $sql = "INSERT INTO Email (destinataire, sujet, message, dateEnvoi, idUtilisateur) 
                         VALUES (?, ?, ?, NOW(), ?)";
                 
@@ -128,7 +184,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } catch (Exception $e) {
             throw new Exception("L'email n'a pas pu être envoyé. Erreur: " . $mail->ErrorInfo);
         }
-        
+        }
+
     } catch (Exception $e) {
         $error_message = $e->getMessage();
     }
@@ -137,13 +194,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 function getFormValue($field) {
     return isset($_POST[$field]) ? htmlspecialchars($_POST[$field]) : '';
 }
+// Load join requests for clubs managed by current user (organisateur)
+$requests = [];
+try {
+    $conn = db_connect();
+    $conn->set_charset('utf8mb4');
+
+    $sql = "SELECT r.idUtilisateur, r.idClub, u.nom, u.prenom, u.apogee, u.email, c.nom AS club_nom
+            FROM requete r
+            JOIN utilisateur u ON u.idUtilisateur = r.idUtilisateur
+            JOIN club c ON c.idClub = r.idClub
+            WHERE r.idClub IN (
+                SELECT idClub FROM adherence WHERE idUtilisateur = ? AND position = 'organisateur'
+            )
+            ORDER BY c.nom ASC, u.nom ASC, u.prenom ASC";
+
+    $stmt = $conn->prepare($sql);
+    if ($stmt) {
+        $stmt->bind_param('i', $user_id);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        while ($row = $res->fetch_assoc()) {
+            $requests[] = $row;
+        }
+        $stmt->close();
+    }
+} catch (Exception $e) {
+    // keep $requests empty on error
+}
 ?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ClubConnect - Envoyer un Email</title>
+    <title>ClubConnect - Communications</title>
     <style>
         * {
             margin: 0;
@@ -415,6 +500,48 @@ function getFormValue($field) {
             padding: 1.5rem;
             margin-bottom: 1.5rem;
         }
+
+        /* Tabs */
+        .tabs-list {
+            display: flex;
+            gap: 0.25rem;
+            padding: 0.25rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .tab-trigger {
+            padding: 0.5rem 0.75rem;
+            background: transparent;
+            border: none;
+            color: #d1d5db;
+            cursor: pointer;
+            border-radius: 0.375rem;
+            transition: all 0.2s;
+            font-size: 0.9375rem;
+        }
+        .tab-trigger.active {
+            background: rgba(255, 255, 255, 0.1);
+            color: #ffffff;
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* Table */
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .table th, .table td {
+            padding: 0.75rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+            text-align: left;
+            color: #e5e7eb;
+            font-size: 0.9375rem;
+        }
+        .table th { color: #9ca3af; font-weight: 600; }
+        .muted { color: #9ca3af; }
 
         /* Form */
         .form-group {
@@ -734,8 +861,8 @@ function getFormValue($field) {
             <div class="header">
                     <div class="header-content">
                         <div class="header-text">
-                            <h2 class="header-title">Envoyer un Email</h2>
-                            <p class="header-subtitle">Composez et envoyez des messages aux membres du club</p>
+                            <h2 class="header-title">Communications</h2>
+                            <p class="header-subtitle">Envoyer des emails et gérer les requêtes d'adhésion</p>
                         </div>
                     </div>
             </div>
@@ -753,6 +880,13 @@ function getFormValue($field) {
             <?php endif; ?>
 
             <div class="content-container">
+                <div class="tabs-list">
+                    <button class="tab-trigger active" onclick="switchTab('email')">Email</button>
+                    <button class="tab-trigger" onclick="switchTab('requetes')">Requêtes</button>
+                </div>
+
+                <!-- Email Tab -->
+                <div id="tab-email" class="tab-content active">
                 <form method="POST" class="card">
                     <div class="form-group">
                         <label for="recipient">À</label>
@@ -813,11 +947,69 @@ function getFormValue($field) {
                         <a href="home.php" class="btn btn-secondary">Retour</a>
                     </div>
                 </form>
+                </div>
+
+                <!-- Requêtes Tab -->
+                <div id="tab-requetes" class="tab-content">
+                    <div class="card">
+                        <?php if (empty($requests)) { ?>
+                            <div class="muted">Aucune requête d'adhésion trouvée pour vos clubs.</div>
+                        <?php } else { ?>
+                            <div style="overflow-x:auto;">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>Nom</th>
+                                            <th>Prénom</th>
+                                            <th>Apogee</th>
+                                            <th>Email</th>
+                                            <th>Club</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php foreach ($requests as $rq) { ?>
+                                            <tr>
+                                                <td><?php echo htmlspecialchars($rq['nom']); ?></td>
+                                                <td><?php echo htmlspecialchars($rq['prenom']); ?></td>
+                                                <td><?php echo htmlspecialchars($rq['apogee']); ?></td>
+                                                <td><?php echo htmlspecialchars($rq['email']); ?></td>
+                                                <td><?php echo htmlspecialchars($rq['club_nom']); ?></td>
+                                                <td>
+                                                    <div style="display:flex; gap:8px;">
+                                                        <form method="POST" onsubmit="return confirm('Approuver cette requête ?');">
+                                                            <input type="hidden" name="request_action" value="approve" />
+                                                            <input type="hidden" name="req_user_id" value="<?php echo (int)$rq['idUtilisateur']; ?>" />
+                                                            <input type="hidden" name="req_club_id" value="<?php echo (int)$rq['idClub']; ?>" />
+                                                            <button type="submit" class="btn" style="padding:0.5rem 0.75rem;">Approuver</button>
+                                                        </form>
+                                                        <form method="POST" onsubmit="return confirm('Rejeter cette requête ?');">
+                                                            <input type="hidden" name="request_action" value="reject" />
+                                                            <input type="hidden" name="req_user_id" value="<?php echo (int)$rq['idUtilisateur']; ?>" />
+                                                            <input type="hidden" name="req_club_id" value="<?php echo (int)$rq['idClub']; ?>" />
+                                                            <button type="submit" class="btn btn-secondary" style="padding:0.5rem 0.75rem;">Rejeter</button>
+                                                        </form>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        <?php } ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <?php } ?>
+                    </div>
+                </div>
             </div>
         </main>
     </div>
 
     <script>
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-trigger').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.querySelector(`[onclick="switchTab('${tab}')"]`).classList.add('active');
+            document.getElementById(`tab-${tab}`).classList.add('active');
+        }
         document.addEventListener('DOMContentLoaded', function() {
             const recipientInput = document.getElementById('recipient');
             const radioButtons = document.querySelectorAll('input[name="recipient-type"]');
