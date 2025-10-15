@@ -10,12 +10,31 @@ if (!$user_id) {
     exit();
 }
 
-// Fetch clubs from database
+// Handle join request
+$join_success = false;
 try {
     $conn = db_connect();
-    
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['join_club'], $_POST['club_id'])) {
+        $club_id_join = intval($_POST['club_id']);
+
+        // Avoid duplicate pending requests
+        $check = $conn->prepare("SELECT 1 FROM requete WHERE idUtilisateur = ? AND idClub = ? LIMIT 1");
+        $check->bind_param('ii', $user_id, $club_id_join);
+        $check->execute();
+        $exists = $check->get_result()->num_rows > 0;
+        $check->close();
+
+        if (!$exists) {
+            $ins = $conn->prepare("INSERT INTO requete (idUtilisateur, idClub) VALUES (?, ?)");
+            $ins->bind_param('ii', $user_id, $club_id_join);
+            $ins->execute();
+            $ins->close();
+        }
+        $join_success = true;
+    }
+
     // 1) Top counters
-    // Total Clubs in the whole system
     $total_sql = "SELECT COUNT(*) AS total FROM club";
     $total_res = $conn->query($total_sql);
     $total_row = $total_res ? $total_res->fetch_assoc() : ['total' => 0];
@@ -39,10 +58,10 @@ try {
     $member_of_clubs = (int)($row['cnt'] ?? 0);
     $stmt->close();
 
-    // 2) List of user's clubs with their role and event count
+    // 2) List ALL clubs with this user's role (if any) and event count
     $sql = "SELECT c.*, a.position, COUNT(e.idEvenement) AS event_count
             FROM club c
-            INNER JOIN adherence a ON a.idClub = c.idClub AND a.idUtilisateur = ?
+            LEFT JOIN adherence a ON a.idClub = c.idClub AND a.idUtilisateur = ?
             LEFT JOIN evenement e ON e.idClub = c.idClub
             GROUP BY c.idClub
             ORDER BY c.nom ASC";
@@ -56,12 +75,12 @@ try {
     while ($club = $result->fetch_assoc()) {
         $club['id'] = $club['idClub'];
         $club['event_count'] = (int)($club['event_count'] ?? 0);
-        // keep 'position' from adherence for tab filtering
         unset($club['idClub']);
         $clubs[] = $club;
     }
 
-    $user_clubs_count = count($clubs);
+    // Count of user's clubs for tabs
+    $user_clubs_count = count(array_filter($clubs, function($c){ return !empty($c['position']); }));
 
     $stmt->close();
     db_close();
@@ -886,6 +905,7 @@ if (isset($_GET['club_events'])) {
           backdrop.style.display = show ? 'flex' : 'none';
         }
       </script>
+      <?php if (!empty($join_success)) { echo "<script>alert('Attendez que votre demande soit approuvée');</script>"; } ?>
       <!-- Club Details Modal -->
       <div id="clubModal" class="modal-backdrop" onclick="if(event.target===this) toggleModal(false)">
         <div class="modal">
@@ -901,6 +921,17 @@ if (isset($_GET['club_events'])) {
 
 <?php
 function createClubCardHTML($club) {
+    $has_role = isset($club['position']) && in_array($club['position'], ['membre', 'organisateur']);
+    $join_form = '';
+    if (!$has_role) {
+        $join_form = '
+            <form method="POST" onsubmit="event.stopPropagation();" style="margin-top:12px;">
+                <input type="hidden" name="join_club" value="1" />
+                <input type="hidden" name="club_id" value="' . intval($club['id']) . '" />
+                <button type="submit" onclick="event.stopPropagation(); alert(\'Attendez que votre demande soit approuvée\');" style="cursor:pointer; padding:8px 12px; border-radius:8px; border:1px solid rgba(255,255,255,0.3); background:rgba(255,255,255,0.08); color:#fff;">Join</button>
+            </form>';
+    }
+
     return '
         <div class="club-card" onclick="showClubDetails(' . $club['id'] . ')">
             <div class="club-header">
@@ -910,6 +941,7 @@ function createClubCardHTML($club) {
                 </div>
                 <span class="club-badge">Members: ' . ($club['nbrMembres'] ?? 0) . '</span>
             </div>
+            ' . $join_form . '
         </div>
     ';
 }
