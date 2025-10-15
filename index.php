@@ -2,7 +2,7 @@
 
 require "database.php";
 
-db_connect();
+$conn=db_connect();
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $email = trim($_POST["email"]);

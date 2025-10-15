@@ -14,33 +14,55 @@ if (!$user_id) {
 try {
     $conn = db_connect();
     
-    // Get clubs that the user is a member of
-    $sql = "SELECT c.*, COUNT(e.idEvenement) as event_count 
-            FROM club c 
-            LEFT JOIN evenement e ON c.idClub = e.idClub 
-            LEFT JOIN membre m ON c.idClub = m.idClub 
-            WHERE m.idUtilisateur = ? 
-            GROUP BY c.idClub 
+    // 1) Top counters
+    // Total Clubs in the whole system
+    $total_sql = "SELECT COUNT(*) AS total FROM club";
+    $total_res = $conn->query($total_sql);
+    $total_row = $total_res ? $total_res->fetch_assoc() : ['total' => 0];
+    $total_clubs = (int)($total_row['total'] ?? 0);
+
+    // Managing = clubs where current user has position 'organisateur'
+    $stmt = $conn->prepare("SELECT COUNT(*) AS cnt FROM adherence WHERE idUtilisateur = ? AND position = 'organisateur'");
+    $stmt->bind_param('i', $user_id);
+    $stmt->execute();
+    $res = $stmt->get_result();
+    $row = $res->fetch_assoc();
+    $managing_clubs = (int)($row['cnt'] ?? 0);
+    $stmt->close();
+
+    // Member Of = clubs where current user has position 'membre'
+    $stmt = $conn->prepare("SELECT COUNT(*) AS cnt FROM adherence WHERE idUtilisateur = ? AND position = 'membre'");
+    $stmt->bind_param('i', $user_id);
+    $stmt->execute();
+    $res = $stmt->get_result();
+    $row = $res->fetch_assoc();
+    $member_of_clubs = (int)($row['cnt'] ?? 0);
+    $stmt->close();
+
+    // 2) List of user's clubs with their role and event count
+    $sql = "SELECT c.*, a.position, COUNT(e.idEvenement) AS event_count
+            FROM club c
+            INNER JOIN adherence a ON a.idClub = c.idClub AND a.idUtilisateur = ?
+            LEFT JOIN evenement e ON e.idClub = c.idClub
+            GROUP BY c.idClub
             ORDER BY c.nom ASC";
-    
+
     $stmt = $conn->prepare($sql);
     $stmt->bind_param('i', $user_id);
     $stmt->execute();
     $result = $stmt->get_result();
-    
+
     $clubs = [];
     while ($club = $result->fetch_assoc()) {
         $club['id'] = $club['idClub'];
-        $club['event_count'] = $club['event_count'] ?? 0;
+        $club['event_count'] = (int)($club['event_count'] ?? 0);
+        // keep 'position' from adherence for tab filtering
         unset($club['idClub']);
         $clubs[] = $club;
     }
-    
-    // Calculate stats
-    $total_clubs = count($clubs);
-    $managing_clubs = 0; // You can modify this based on your role logic
-    $member_of_clubs = $total_clubs;
-    
+
+    $user_clubs_count = count($clubs);
+
     $stmt->close();
     db_close();
     
@@ -571,7 +593,10 @@ if (isset($_GET['club_events'])) {
       .modal-title { font-size: 18px; font-weight:600; }
       .modal-close { background: transparent; border: 1px solid rgba(255,255,255,0.2); color:#d1d5db; border-radius:8px; padding:6px 10px; cursor:pointer; }
       .modal-body { padding: 20px; }
-      .events-list { display:grid; gap:12px; }
+      .events-list { display:grid; gap:12px; max-height: 50vh; overflow-y: auto; padding-right: 8px; }
+      .events-list::-webkit-scrollbar { width: 8px; }
+      .events-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 8px; }
+      .events-list::-webkit-scrollbar-track { background: transparent; }
       .event-row { padding:12px; border:1px solid rgba(255,255,255,0.12); border-radius:10px; background: rgba(255,255,255,0.04); display:flex; justify-content:space-between; align-items:center; }
       .muted { color:#9ca3af; }
     </style>
@@ -740,7 +765,7 @@ if (isset($_GET['club_events'])) {
 
               <div class="content-area">
                 <div class="tabs-list">
-                  <button class="tab-trigger active" onclick="switchTab('all')">All (<?php echo $total_clubs; ?>)</button>
+                  <button class="tab-trigger active" onclick="switchTab('all')">All (<?php echo isset($user_clubs_count) ? $user_clubs_count : (isset($clubs) ? count($clubs) : 0); ?>)</button>
                   <button class="tab-trigger" onclick="switchTab('managing')">Managing (<?php echo $managing_clubs; ?>)</button>
                   <button class="tab-trigger" onclick="switchTab('member')">Member Of (<?php echo $member_of_clubs; ?>)</button>
                 </div>
@@ -764,7 +789,7 @@ if (isset($_GET['club_events'])) {
                 <div id="tab-managing" class="tab-content">
                   <div class="clubs-grid">
                     <?php
-                    $managing_clubs_list = []; // You can filter clubs where user has leadership role
+                    $managing_clubs_list = array_values(array_filter($clubs ?? [], function($c){ return isset($c['position']) && $c['position'] === 'organisateur'; }));
                     if (empty($managing_clubs_list)) {
                         echo '<div style="text-align:center; color:#9ca3af; grid-column:1 / -1; padding:24px;">No managing roles found</div>';
                     } else {
@@ -780,10 +805,11 @@ if (isset($_GET['club_events'])) {
                 <div id="tab-member" class="tab-content">
                   <div class="clubs-grid">
                     <?php
-                    if (empty($clubs)) {
+                    $member_clubs_list = array_values(array_filter($clubs ?? [], function($c){ return isset($c['position']) && $c['position'] === 'membre'; }));
+                    if (empty($member_clubs_list)) {
                         echo '<div style="text-align:center; color:#9ca3af; grid-column:1 / -1; padding:24px;">No club memberships found</div>';
                     } else {
-                        foreach ($clubs as $club) {
+                        foreach ($member_clubs_list as $club) {
                             echo createClubCardHTML($club);
                         }
                     }
