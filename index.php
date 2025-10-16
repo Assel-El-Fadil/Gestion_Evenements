@@ -1,12 +1,12 @@
 <?php
 
 require "database.php";
+require "configure.php";
 
 db_connect();
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
     // reCAPTCHA v2 verification
-    $recaptcha_secret = '6LctZ-wrAAAAAPcmnvWM0ed8sXDZwsXcMnb3DU-_';
     $recaptcha_response = isset($_POST['g-recaptcha-response']) ? trim($_POST['g-recaptcha-response']) : '';
 
     if (empty($recaptcha_response)) {
@@ -444,7 +444,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             </div>
 
             <div class="form-group">
-                <div class="g-recaptcha" data-sitekey="6LctZ-wrAAAAAAUQYBGQmmE0wscyVW-pfSIvEaNM"></div>
+                <div class="g-recaptcha" data-sitekey="<?php echo htmlspecialchars($recaptcha_site); ?>"></div>
             </div>
 
             <button type="submit" class="submit-button">
