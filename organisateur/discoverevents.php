@@ -13,7 +13,7 @@ $user_id = $_SESSION['user_id'];
 $conn = db_connect();
 
 // Récupérer les informations de l'utilisateur
-$user_sql = "SELECT nom, prenom, annee, filiere FROM utilisateur WHERE idUtilisateur = ?";
+$user_sql = "SELECT nom, prenom, annee, filiere FROM Utilisateur WHERE idUtilisateur = ?";
 $stmt = $conn->prepare($user_sql);
 $stmt->bind_param("i", $user_id);
 $stmt->execute();
@@ -39,7 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $event_id = intval($_POST['event_id'] ?? 0);
         if ($event_id > 0) {
             // Check if already registered
-            $stmt = $conn->prepare('SELECT 1 FROM inscription WHERE idUtilisateur = ? AND idEvenement = ?');
+            $stmt = $conn->prepare('SELECT 1 FROM Inscription WHERE idUtilisateur = ? AND idEvenement = ?');
             $stmt->bind_param('ii', $user_id, $event_id);
             $stmt->execute();
             $already = $stmt->get_result()->num_rows > 0;
@@ -49,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $error_message = "Vous êtes déjà inscrit à cet événement.";
             } else {
                 // Get capacity and participants
-                $stmt = $conn->prepare('SELECT capacité, nbrParticipants FROM evenement WHERE idEvenement = ?');
+                $stmt = $conn->prepare('SELECT capacité, nbrParticipants FROM Evenement WHERE idEvenement = ?');
                 $stmt->bind_param('i', $event_id);
                 $stmt->execute();
                 $res = $stmt->get_result();
@@ -62,11 +62,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $error_message = "La capacité de l'événement a été atteinte.";
                 } else {
                     // Register and increment
-                    $stmt = $conn->prepare('INSERT INTO inscription (idUtilisateur, idEvenement) VALUES (?, ?)');
+                    $stmt = $conn->prepare('INSERT INTO Inscription (idUtilisateur, idEvenement) VALUES (?, ?)');
                     $stmt->bind_param('ii', $user_id, $event_id);
                     if ($stmt->execute()) {
                         $stmt->close();
-                        $up = $conn->prepare('UPDATE evenement SET nbrParticipants = nbrParticipants + 1 WHERE idEvenement = ?');
+                        $up = $conn->prepare('UPDATE Evenement SET nbrParticipants = nbrParticipants + 1 WHERE idEvenement = ?');
                         $up->bind_param('i', $event_id);
                         $up->execute();
                         $up->close();
@@ -81,23 +81,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$events_month_sql = "SELECT COUNT(*) as count FROM evenement 
+$events_month_sql = "SELECT COUNT(*) as count FROM Evenement 
                     WHERE MONTH(date) = MONTH(CURRENT_DATE()) 
                     AND YEAR(date) = YEAR(CURRENT_DATE())";
 $result = $conn->query($events_month_sql);
 $stats['events_this_month'] = $result->fetch_assoc()['count'];
 
-$active_clubs_sql = "SELECT COUNT(DISTINCT idClub) as count FROM evenement";
+$active_clubs_sql = "SELECT COUNT(DISTINCT idClub) as count FROM Evenement";
 $result = $conn->query($active_clubs_sql);
 $stats['active_clubs'] = $result->fetch_assoc()['count'];
 
-$categories_sql = "SELECT COUNT(DISTINCT titre) as count FROM evenement";
+$categories_sql = "SELECT COUNT(DISTINCT titre) as count FROM Evenement";
 $result = $conn->query($categories_sql);
 $stats['categories'] = $result->fetch_assoc()['count'];
 
 $events_sql = "SELECT e.*, c.nom as club_nom 
-               FROM evenement e 
-               JOIN club c ON e.idClub = c.idClub 
+               FROM Evenement e 
+               JOIN Club c ON e.idClub = c.idClub 
                WHERE e.date >= CURDATE()";
 if ($search_query !== '') {
     $events_sql .= " AND (e.titre LIKE ? OR c.nom LIKE ? OR e.lieu LIKE ?)";
@@ -118,7 +118,7 @@ $events_count = $events_result ? $events_result->num_rows : 0;
 // Preload user's registered events to disable the button
 $user_event_ids = [];
 if ($user_id) {
-    $reg = $conn->prepare('SELECT idEvenement FROM inscription WHERE idUtilisateur = ?');
+    $reg = $conn->prepare('SELECT idEvenement FROM Inscription WHERE idUtilisateur = ?');
     $reg->bind_param('i', $user_id);
     $reg->execute();
     $rres = $reg->get_result();

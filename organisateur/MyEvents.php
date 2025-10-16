@@ -19,7 +19,7 @@ $user_id = $_SESSION['user_id'];
 
 // Récupérer les informations de l'utilisateur
 $conn = db_connect();
-$user_sql = "SELECT nom, prenom, annee, filiere FROM utilisateur WHERE idUtilisateur = ?";
+$user_sql = "SELECT nom, prenom, annee, filiere FROM Utilisateur WHERE idUtilisateur = ?";
 $stmt_user = $conn->prepare($user_sql);
 $stmt_user->bind_param("i", $user_id);
 $stmt_user->execute();
@@ -41,8 +41,8 @@ try {
     
     // Counters for events where the user is registered
     $total_sql = "SELECT COUNT(*) AS total
-                  FROM inscription i
-                  JOIN evenement e ON e.idEvenement = i.idEvenement
+                  FROM Inscription i
+                  JOIN Evenement e ON e.idEvenement = i.idEvenement
                   WHERE i.idUtilisateur = ?";
     $stmt_cnt = $conn->prepare($total_sql);
     $stmt_cnt->bind_param('i', $user_id);
@@ -53,8 +53,8 @@ try {
     $stmt_cnt->close();
 
     $upcoming_sql = "SELECT COUNT(*) AS cnt
-                     FROM inscription i
-                     JOIN evenement e ON e.idEvenement = i.idEvenement
+                     FROM Inscription i
+                     JOIN Evenement e ON e.idEvenement = i.idEvenement
                      WHERE i.idUtilisateur = ? AND e.date >= CURDATE()";
     $stmt_up = $conn->prepare($upcoming_sql);
     $stmt_up->bind_param('i', $user_id);
@@ -65,8 +65,8 @@ try {
     $stmt_up->close();
 
     $past_sql = "SELECT COUNT(*) AS cnt
-                 FROM inscription i
-                 JOIN evenement e ON e.idEvenement = i.idEvenement
+                 FROM Inscription i
+                 JOIN Evenement e ON e.idEvenement = i.idEvenement
                  WHERE i.idUtilisateur = ? AND e.date < CURDATE()";
     $stmt_ps = $conn->prepare($past_sql);
     $stmt_ps->bind_param('i', $user_id);
@@ -78,9 +78,9 @@ try {
 
     // Load only events the user is registered for
     $sql = "SELECT e.*, c.nom as club_nom
-            FROM inscription i
-            JOIN evenement e ON e.idEvenement = i.idEvenement
-            LEFT JOIN club c ON e.idClub = c.idClub
+            FROM Inscription i
+            JOIN Evenement e ON e.idEvenement = i.idEvenement
+            LEFT JOIN Club c ON e.idClub = c.idClub
             WHERE i.idUtilisateur = ?";
     if ($search_query !== '') {
         $sql .= " AND (e.titre LIKE ? OR c.nom LIKE ? OR e.lieu LIKE ?)";
@@ -130,7 +130,7 @@ try {
 function getEventDetails($event_id) {
     try {
         $conn = db_connect();
-        $stmt = $conn->prepare("SELECT e.*, c.nom as club_nom FROM evenement e LEFT JOIN club c ON e.idClub = c.idClub WHERE e.idEvenement = ?");
+        $stmt = $conn->prepare("SELECT e.*, c.nom as club_nom FROM Evenement e LEFT JOIN Club c ON e.idClub = c.idClub WHERE e.idEvenement = ?");
         $stmt->bind_param('i', $event_id);
         $stmt->execute();
         $result = $stmt->get_result();

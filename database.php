@@ -38,7 +38,7 @@ function get_upcoming_events($limit = 5) {
     $conn = db_connect();
     
     $sql = "SELECT e.*, c.nom as club_nom 
-            FROM evenement e 
+            FROM Evenement e 
             JOIN Club c ON e.idClub = c.idClub 
             WHERE e.date >= CURDATE() 
             ORDER BY e.date ASC 
@@ -67,7 +67,7 @@ function get_user_clubs($user_id, $limit = 2) {
     
     $sql = "SELECT c.*, a.position 
             FROM Club c 
-            NATURAL JOIN adherence a
+            NATURAL JOIN Adherence a
             WHERE a.idUtilisateur = ? 
             ORDER BY c.nom ASC 
             LIMIT ?";
@@ -94,7 +94,7 @@ function get_club_event_count($club_id) {
     $conn = db_connect();
     
     $sql = "SELECT COUNT(*) as event_count 
-            FROM evenement 
+            FROM Evenement 
             WHERE idClub = ?";
     
     $stmt = $conn->prepare($sql);

@@ -2,7 +2,7 @@
 session_start();
 require "../database.php";
 
-// Vérifier si l'utilisateur est connecté
+//Vérifier si l'utilisateur est connecté
 if (!isset($_SESSION["user_id"])) {
     header("Location: ../signin.php");
     exit();
@@ -80,7 +80,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
         
-        $sql = "INSERT INTO evenement(titre, description, capacité, date, lieu, photo, statut, nbrParticipants, idClub) 
+        $sql = "INSERT INTO Evenement(titre, description, capacite, date, lieu, photo, statut, nbrParticipants, idClub) 
                 VALUES (?, ?, ?, ?, ?, ?, 'upcoming', 0, ?)";
         
         $stmt = $conn->prepare($sql);

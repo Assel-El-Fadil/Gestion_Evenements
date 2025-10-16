@@ -23,7 +23,7 @@ $user_id = $_SESSION['user_id'];
 
 // Récupérer les informations de l'utilisateur
 $conn = db_connect();
-$user_sql = "SELECT nom, prenom, annee, filiere FROM utilisateur WHERE idUtilisateur = ?";
+$user_sql = "SELECT nom, prenom, annee, filiere FROM Utilisateur WHERE idUtilisateur = ?";
 $stmt_user = $conn->prepare($user_sql);
 $stmt_user->bind_param("i", $user_id);
 $stmt_user->execute();
@@ -48,14 +48,14 @@ try {
         $club_id_join = intval($_POST['club_id']);
 
         // Avoid duplicate pending requests
-        $check = $conn->prepare("SELECT 1 FROM requete WHERE idUtilisateur = ? AND idClub = ? LIMIT 1");
+        $check = $conn->prepare("SELECT 1 FROM Requete WHERE idUtilisateur = ? AND idClub = ? LIMIT 1");
         $check->bind_param('ii', $user_id, $club_id_join);
         $check->execute();
         $exists = $check->get_result()->num_rows > 0;
         $check->close();
 
         if (!$exists) {
-            $ins = $conn->prepare("INSERT INTO requete (idUtilisateur, idClub) VALUES (?, ?)");
+            $ins = $conn->prepare("INSERT INTO Requete (idUtilisateur, idClub) VALUES (?, ?)");
             $ins->bind_param('ii', $user_id, $club_id_join);
             $ins->execute();
             $ins->close();
@@ -64,13 +64,13 @@ try {
     }
 
     // 1) Top counters
-    $total_sql = "SELECT COUNT(*) AS total FROM club";
+    $total_sql = "SELECT COUNT(*) AS total FROM Club";
     $total_res = $conn->query($total_sql);
     $total_row = $total_res ? $total_res->fetch_assoc() : ['total' => 0];
     $total_clubs = (int)($total_row['total'] ?? 0);
 
     // Managing = clubs where current user has position 'organisateur'
-    $stmt = $conn->prepare("SELECT COUNT(*) AS cnt FROM adherence WHERE idUtilisateur = ? AND position = 'organisateur'");
+    $stmt = $conn->prepare("SELECT COUNT(*) AS cnt FROM Adherence WHERE idUtilisateur = ? AND position = 'organisateur'");
     $stmt->bind_param('i', $user_id);
     $stmt->execute();
     $res = $stmt->get_result();
@@ -79,7 +79,7 @@ try {
     $stmt->close();
 
     // Member Of = clubs where current user has position 'membre'
-    $stmt = $conn->prepare("SELECT COUNT(*) AS cnt FROM adherence WHERE idUtilisateur = ? AND position = 'membre'");
+    $stmt = $conn->prepare("SELECT COUNT(*) AS cnt FROM Adherence WHERE idUtilisateur = ? AND position = 'membre'");
     $stmt->bind_param('i', $user_id);
     $stmt->execute();
     $res = $stmt->get_result();
@@ -89,9 +89,9 @@ try {
 
     // 2) List clubs (optionally filtered) with user's role and event count
     $sql = "SELECT c.*, a.position, COUNT(e.idEvenement) AS event_count
-            FROM club c
-            LEFT JOIN adherence a ON a.idClub = c.idClub AND a.idUtilisateur = ?
-            LEFT JOIN evenement e ON e.idClub = c.idClub";
+            FROM Club c
+            LEFT JOIN Adherence a ON a.idClub = c.idClub AND a.idUtilisateur = ?
+            LEFT JOIN Evenement e ON e.idClub = c.idClub";
     if ($search_query !== '') {
         $sql .= " WHERE c.nom LIKE ?";
     }
@@ -131,7 +131,7 @@ try {
 function getClubDetails($club_id) {
     try {
         $conn = db_connect();
-        $stmt = $conn->prepare("SELECT * FROM club WHERE idClub = ?");
+        $stmt = $conn->prepare("SELECT * FROM Club WHERE idClub = ?");
         $stmt->bind_param('i', $club_id);
         $stmt->execute();
         $result = $stmt->get_result();
@@ -155,7 +155,7 @@ function getClubDetails($club_id) {
 function getClubEvents($club_id) {
     try {
         $conn = db_connect();
-        $stmt = $conn->prepare("SELECT * FROM evenement WHERE idClub = ? ORDER BY date ASC");
+        $stmt = $conn->prepare("SELECT * FROM Evenement WHERE idClub = ? ORDER BY date ASC");
         $stmt->bind_param('i', $club_id);
         $stmt->execute();
         $result = $stmt->get_result();
