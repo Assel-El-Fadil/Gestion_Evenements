@@ -9,6 +9,8 @@ $conn = db_connect();
 
 $user = null;
 $initials = "JS"; 
+$success_message = '';
+$error_message = '';
 
 if ($user_id) {
     $user_sql = "SELECT nom, prenom, filiere FROM utilisateur WHERE idUtilisateur = ?";
@@ -28,6 +30,55 @@ if ($user_id) {
 
 $stats = [];
 
+// Handle event registration
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $action = $_POST['action'] ?? '';
+    if ($action === 'register' && $user_id) {
+        $event_id = intval($_POST['event_id'] ?? 0);
+        if ($event_id > 0) {
+            // Check if already registered
+            $stmt = $conn->prepare('SELECT 1 FROM inscription WHERE idUtilisateur = ? AND idEvenement = ?');
+            $stmt->bind_param('ii', $user_id, $event_id);
+            $stmt->execute();
+            $already = $stmt->get_result()->num_rows > 0;
+            $stmt->close();
+
+            if ($already) {
+                $error_message = "Vous êtes déjà inscrit à cet événement.";
+            } else {
+                // Get capacity and participants
+                $stmt = $conn->prepare('SELECT capacité, nbrParticipants FROM evenement WHERE idEvenement = ?');
+                $stmt->bind_param('i', $event_id);
+                $stmt->execute();
+                $res = $stmt->get_result();
+                $evt = $res->fetch_assoc();
+                $stmt->close();
+
+                if (!$evt) {
+                    $error_message = "Événement introuvable.";
+                } else if (intval($evt['nbrParticipants']) >= intval($evt['capacité'])) {
+                    $error_message = "La capacité de l'événement a été atteinte.";
+                } else {
+                    // Register and increment
+                    $stmt = $conn->prepare('INSERT INTO inscription (idUtilisateur, idEvenement) VALUES (?, ?)');
+                    $stmt->bind_param('ii', $user_id, $event_id);
+                    if ($stmt->execute()) {
+                        $stmt->close();
+                        $up = $conn->prepare('UPDATE evenement SET nbrParticipants = nbrParticipants + 1 WHERE idEvenement = ?');
+                        $up->bind_param('i', $event_id);
+                        $up->execute();
+                        $up->close();
+                        $success_message = "Inscription réussie.";
+                    } else {
+                        $error_message = "Erreur lors de l'inscription.";
+                        $stmt->close();
+                    }
+                }
+            }
+        }
+    }
+}
+
 $events_month_sql = "SELECT COUNT(*) as count FROM evenement 
                     WHERE MONTH(date) = MONTH(CURRENT_DATE()) 
                     AND YEAR(date) = YEAR(CURRENT_DATE())";
@@ -45,10 +96,21 @@ $stats['categories'] = $result->fetch_assoc()['count'];
 $events_sql = "SELECT e.*, c.nom as club_nom 
                FROM evenement e 
                JOIN club c ON e.idClub = c.idClub 
-               ORDER BY e.date ASC 
-               LIMIT 6";
+               WHERE e.date >= CURDATE()
+               ORDER BY e.date ASC ";
 $events_result = $conn->query($events_sql);
 $events_count = $events_result->num_rows;
+
+// Preload user's registered events to disable the button
+$user_event_ids = [];
+if ($user_id) {
+    $reg = $conn->prepare('SELECT idEvenement FROM inscription WHERE idUtilisateur = ?');
+    $reg->bind_param('i', $user_id);
+    $reg->execute();
+    $rres = $reg->get_result();
+    while ($row = $rres->fetch_assoc()) { $user_event_ids[intval($row['idEvenement'])] = true; }
+    $reg->close();
+}
 
 db_close();
 ?>
@@ -786,6 +848,16 @@ db_close();
                         <input type="text" class="search-input" placeholder="Rechercher des événements, clubs...">
                     </div>
                 </div>
+                <?php if (!empty($success_message)): ?>
+                    <div style="margin-bottom:16px; padding:12px 16px; border-radius:8px; border:1px solid rgba(34,197,94,0.3); background: rgba(34,197,94,0.12); color:#86efac;">
+                        <?= htmlspecialchars($success_message) ?>
+                    </div>
+                <?php endif; ?>
+                <?php if (!empty($error_message)): ?>
+                    <div style="margin-bottom:16px; padding:12px 16px; border-radius:8px; border:1px solid rgba(239,68,68,0.3); background: rgba(239,68,68,0.12); color:#fca5a5;">
+                        <?= htmlspecialchars($error_message) ?>
+                    </div>
+                <?php endif; ?>
 
                 <div class="stats-grid">
                     <div class="stat-card">
@@ -863,8 +935,7 @@ db_close();
                                     $category = "Événement";
                                 }
                                 
-                                $image_url = "https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=MnwxfDB8MXxyYW5kb218MHx8ZXZlbnR8fHx8fHwxNzI4NjU2ODAw&ixlib=rb-4.0.3&q=80&w=1080";
-                                
+                                $image_url = "../" . $event['photo'];
                                 $title_lower = strtolower($event['titre']);
                                 
                                 if (strpos($title_lower, 'formationgit') !== false || strpos($title_lower, 'formation git') !== false || strpos($title_lower, 'git') !== false) {
@@ -880,8 +951,8 @@ db_close();
                                 
                                 $date = date('M j, Y', strtotime($event['date']));
                                 
-                                $nbrParticipants = isset($event['nbrParticipants']) ? $event['nbrParticipants'] : 0;
-                                $capacite = isset($event['capacite']) ? $event['capacite'] : 50;
+                                $nbrParticipants = intval($event['nbrParticipants'] ?? 0);
+                                $capacite = intval($event['capacité'] ?? 0);
                                 ?>
                                 
                                 <div class="event-card">
@@ -923,8 +994,16 @@ db_close();
                                             </div>
                                         </div>
                                         <div class="event-actions">
-                                            <button class="btn btn-primary">S'inscrire</button>
-                                            <button class="btn btn-secondary">Voir Détails</button>
+                                            <form method="POST" style="flex:1; display:flex; gap:12px;">
+                                                <input type="hidden" name="action" value="register">
+                                                <input type="hidden" name="event_id" value="<?= intval($event['idEvenement']) ?>">
+                                                <?php $isRegistered = isset($user_event_ids[intval($event['idEvenement'])]); ?>
+                                                <?php $isFull = $nbrParticipants >= $capacite && $capacite > 0; ?>
+                                                <button type="submit" class="btn btn-primary" <?= ($isRegistered || $isFull) ? 'disabled style="opacity:.6; cursor:not-allowed;"' : '' ?>>
+                                                    <?= $isRegistered ? "Inscrit" : ( $isFull ? "Complet" : "S'inscrire") ?>
+                                                </button>
+                                                <button type="button" class="btn btn-secondary" onclick="showEventDetails(<?= intval($event['idEvenement']) ?>)">Voir Détails</button>
+                                            </form>
                                         </div>
                                     </div>
                                 </div>
@@ -941,3 +1020,73 @@ db_close();
     </div>
 </body>
 </html>
+<script>
+async function showEventDetails(id) {
+    try {
+        toggleModal(true, '<div style="color:#9ca3af;">Chargement...</div>');
+        const response = await fetch('MyEvents.php?event_id=' + id);
+        const event = await response.json();
+        if (event.error) {
+            throw new Error(event.error);
+        }
+        const dateObj = new Date(event.date_evenement);
+        const formattedDate = dateObj.toLocaleDateString('fr-FR', { month:'short', day:'numeric', year:'numeric' });
+        const html = `
+            <div style="display:grid; gap:12px;">
+                <div><span class="muted">Club</span><div>${event.club_nom || ''}</div></div>
+                <div style="display:flex; gap:16px;">
+                    <div><span class="muted">Date</span><div>${formattedDate}</div></div>
+                    <div><span class="muted">Statut</span><div>${event.statut}</div></div>
+                </div>
+                <div><span class="muted">Lieu</span><div>${event.lieu || 'À déterminer'}</div></div>
+                <div><span class="muted">Description</span><div>${event.description || ''}</div></div>
+                <div style="display:flex; gap:16px;">
+                    <div><span class="muted">Participants</span><div>${event.participants_inscrits || 0}</div></div>
+                    <div><span class="muted">Capacité</span><div>${event.capacite_max || 0}</div></div>
+                </div>
+            </div>
+        `;
+        setModalContent(event.nom, html);
+    } catch (e) {
+        setModalContent('Erreur', '<div style="color:#ef4444;">Échec du chargement de l\'événement: ' + e.message + '</div>');
+    }
+}
+
+function toggleModal(show, placeholderHtml) {
+    const backdrop = document.getElementById('eventModal');
+    if (!backdrop) return;
+    if (typeof placeholderHtml === 'string') {
+        const bodyEl = document.getElementById('eventModalBody');
+        if (bodyEl) bodyEl.innerHTML = placeholderHtml;
+    }
+    backdrop.style.display = show ? 'flex' : 'none';
+}
+
+function setModalContent(title, html) {
+    const titleEl = document.getElementById('eventModalTitle');
+    const bodyEl = document.getElementById('eventModalBody');
+    if (titleEl) titleEl.textContent = title;
+    if (bodyEl) bodyEl.innerHTML = html;
+    toggleModal(true);
+}
+</script>
+
+<style>
+.modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display:none; align-items:center; justify-content:center; z-index:50; }
+.modal { width: 90%; max-width: 800px; background: rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); border-radius:12px; backdrop-filter: blur(20px); overflow:hidden; }
+.modal-header { display:flex; justify-content:space-between; align-items:center; padding:16px 20px; border-bottom:1px solid rgba(255,255,255,0.12); }
+.modal-title { font-size:18px; font-weight:600; }
+.modal-close { background: transparent; border: 1px solid rgba(255,255,255,0.2); color:#d1d5db; border-radius:8px; padding:6px 10px; cursor:pointer; }
+.modal-body { padding: 20px; }
+.muted { color:#9ca3af; font-size:12px; }
+</style>
+
+<div id="eventModal" class="modal-backdrop" onclick="if(event.target===this) toggleModal(false)">
+    <div class="modal">
+        <div class="modal-header">
+            <div id="eventModalTitle" class="modal-title">Détails de l'Événement</div>
+            <button class="modal-close" onclick="toggleModal(false)">Fermer</button>
+        </div>
+        <div id="eventModalBody" class="modal-body"></div>
+    </div>
+</div>
