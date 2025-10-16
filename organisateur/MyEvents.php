@@ -4,6 +4,7 @@ require_once '../database.php';
 
 // Get user ID from session
 $user_id = $_SESSION['user_id'] ?? 1;
+$search_query = trim($_GET['q'] ?? '');
 
 if (!$user_id) {
     header("Location: ../index.php");
@@ -56,11 +57,19 @@ try {
             FROM inscription i
             JOIN evenement e ON e.idEvenement = i.idEvenement
             LEFT JOIN club c ON e.idClub = c.idClub
-            WHERE i.idUtilisateur = ?
-            ORDER BY e.date ASC";
+            WHERE i.idUtilisateur = ?";
+    if ($search_query !== '') {
+        $sql .= " AND (e.titre LIKE ? OR c.nom LIKE ? OR e.lieu LIKE ?)";
+    }
+    $sql .= " ORDER BY e.date ASC";
     
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param('i', $user_id);
+    if ($search_query !== '') {
+        $like = "%" . $search_query . "%";
+        $stmt->bind_param('isss', $user_id, $like, $like, $like);
+    } else {
+        $stmt->bind_param('i', $user_id);
+    }
     $stmt->execute();
     $result = $stmt->get_result();
     
@@ -817,10 +826,12 @@ if (isset($_GET['event_id'])) {
                         </div>
                         <div class="header-actions">
                             <div class="search-wrapper">
-                                <svg class="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                                </svg>
-                                <input type="text" class="search-input" placeholder="Rechercher des événements">
+                                <form method="GET" class="search-wrapper">
+                                    <svg class="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                                    </svg>
+                                    <input type="text" name="q" class="search-input" value="<?php echo htmlspecialchars($search_query); ?>" placeholder="Rechercher des événements, clubs...">
+                                </form>
                             </div>
                             <button class="notification-btn">
                                 <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">

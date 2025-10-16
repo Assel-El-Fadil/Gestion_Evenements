@@ -29,6 +29,7 @@ if ($user_id) {
 }
 
 $stats = [];
+$search_query = trim($_GET['q'] ?? '');
 
 // Handle event registration
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -96,10 +97,22 @@ $stats['categories'] = $result->fetch_assoc()['count'];
 $events_sql = "SELECT e.*, c.nom as club_nom 
                FROM evenement e 
                JOIN club c ON e.idClub = c.idClub 
-               WHERE e.date >= CURDATE()
-               ORDER BY e.date ASC ";
-$events_result = $conn->query($events_sql);
-$events_count = $events_result->num_rows;
+               WHERE e.date >= CURDATE()";
+if ($search_query !== '') {
+    $events_sql .= " AND (e.titre LIKE ? OR c.nom LIKE ? OR e.lieu LIKE ?)";
+}
+$events_sql .= " ORDER BY e.date ASC";
+
+if ($search_query !== '') {
+    $like = "%" . $search_query . "%";
+    $stmtEv = $conn->prepare($events_sql);
+    $stmtEv->bind_param('sss', $like, $like, $like);
+    $stmtEv->execute();
+    $events_result = $stmtEv->get_result();
+} else {
+    $events_result = $conn->query($events_sql);
+}
+$events_count = $events_result ? $events_result->num_rows : 0;
 
 // Preload user's registered events to disable the button
 $user_event_ids = [];
@@ -842,10 +855,12 @@ db_close();
                         <p class="header-subtitle">Trouvez et rejoignez des événements passionnants sur votre campus</p>
                     </div>
                     <div class="search-container">
-                        <svg class="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                        </svg>
-                        <input type="text" class="search-input" placeholder="Rechercher des événements, clubs...">
+                        <form method="GET" style="position:relative;">
+                            <svg class="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                            </svg>
+                            <input type="text" name="q" class="search-input" placeholder="Rechercher des événements, clubs..." value="<?= htmlspecialchars($search_query) ?>">
+                        </form>
                     </div>
                 </div>
                 <?php if (!empty($success_message)): ?>
