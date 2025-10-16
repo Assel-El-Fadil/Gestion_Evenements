@@ -55,7 +55,7 @@ try {
     $upcoming_sql = "SELECT COUNT(*) AS cnt
                      FROM Inscription i
                      JOIN Evenement e ON e.idEvenement = i.idEvenement
-                     WHERE i.idUtilisateur = ? AND e.date >= CURDATE()";
+                     WHERE i.idUtilisateur = ? AND e.dateEvenement >= CURDATE()";
     $stmt_up = $conn->prepare($upcoming_sql);
     $stmt_up->bind_param('i', $user_id);
     $stmt_up->execute();
@@ -67,7 +67,7 @@ try {
     $past_sql = "SELECT COUNT(*) AS cnt
                  FROM Inscription i
                  JOIN Evenement e ON e.idEvenement = i.idEvenement
-                 WHERE i.idUtilisateur = ? AND e.date < CURDATE()";
+                 WHERE i.idUtilisateur = ? AND e.dateEvenement < CURDATE()";
     $stmt_ps = $conn->prepare($past_sql);
     $stmt_ps->bind_param('i', $user_id);
     $stmt_ps->execute();
@@ -85,7 +85,7 @@ try {
     if ($search_query !== '') {
         $sql .= " AND (e.titre LIKE ? OR c.nom LIKE ? OR e.lieu LIKE ?)";
     }
-    $sql .= " ORDER BY e.date ASC";
+    $sql .= " ORDER BY e.dateEvenement ASC";
     
     $stmt = $conn->prepare($sql);
     if ($search_query !== '') {

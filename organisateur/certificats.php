@@ -38,7 +38,7 @@ $sql = "SELECT
             u.prenom,
             e.titre AS evenement_titre,
             c.nom AS club_nom,
-            e.date AS date_evenement,
+            e.dateEvenement AS date_evenement,
             e.lieu,
             e.nbrParticipants
         FROM Attestation a
