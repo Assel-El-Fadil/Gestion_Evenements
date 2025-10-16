@@ -59,7 +59,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($verification_success) {
             $_SESSION['recaptcha_ok'] = true;
-            header('Location: index.php');
+            header('Location: signin.php');
             exit();
         } else {
             $error_message = 'Vérification reCAPTCHA échouée. Veuillez réessayer.';
