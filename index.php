@@ -34,7 +34,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     break;
                 case 'admin':
                     // Admin page not created yet - redirect to default or show message
-                    header("Location: organisateur/home.php"); // Temporary redirect
+                    header("Location: admin/home.php"); // Temporary redirect
                     break;
                 default:
                     // Default fallback
