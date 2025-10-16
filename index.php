@@ -2,15 +2,10 @@
 
 require "configure.php";
 
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-
-// If already verified, go straight to index
-if (isset($_SESSION['recaptcha_ok']) && $_SESSION['recaptcha_ok'] === true) {
-    header('Location: index.php');
-    exit();
-}
+// DESTROY ANY EXISTING SESSIONS AT THE START
+session_destroy();
+// Start a fresh session
+session_start();
 
 $error_message = null;
 
@@ -59,6 +54,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($verification_success) {
             $_SESSION['recaptcha_ok'] = true;
+            // DESTROY SESSION BEFORE REDIRECTING to prevent loops
+            session_destroy();
             header('Location: signin.php');
             exit();
         } else {
@@ -126,5 +123,3 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
 </body>
 </html>
-
-
