@@ -701,11 +701,11 @@ if (isset($_GET['event_id'])) {
             color: #ffffff;
         }
     </style>
-    </head>
-    <body>
-        <div class="bg-gradient"></div>
-        <div class="orb orb-1"></div>
-        <div class="orb orb-2"></div>
+</head>
+<body>
+    <div class="bg-gradient"></div>
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
     <div class="app-container">
         <!-- Sidebar -->
         <aside class="sidebar">
@@ -789,15 +789,15 @@ if (isset($_GET['event_id'])) {
                 <div class="header-content">
                     <div class="header-top">
                         <div class="header-title">
-                            <h1>My Events</h1>
-                            <p>Manage and track your event registrations</p>
+                            <h1>Mes Événements</h1>
+                            <p>Gérez et suivez vos inscriptions aux événements</p>
                         </div>
                         <div class="header-actions">
                             <div class="search-wrapper">
                                 <svg class="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                                 </svg>
-                                <input type="text" class="search-input" placeholder="Search events">
+                                <input type="text" class="search-input" placeholder="Rechercher des événements">
                             </div>
                             <button class="notification-btn">
                                 <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -811,7 +811,7 @@ if (isset($_GET['event_id'])) {
                     <div class="stats-grid">
                         <div class="stat-card">
                             <div class="stat-header">
-                                <p class="stat-label">Total Registered</p>
+                                <p class="stat-label">Total Inscrits</p>
                                 <div class="stat-icon blue">
                                     <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
@@ -819,12 +819,12 @@ if (isset($_GET['event_id'])) {
                                 </div>
                             </div>
                             <p class="stat-value"><?php echo $total_count; ?></p>
-                            <p class="stat-meta">All time</p>
+                            <p class="stat-meta">Tous les temps</p>
                         </div>
 
                         <div class="stat-card">
                             <div class="stat-header">
-                                <p class="stat-label">Upcoming Events</p>
+                                <p class="stat-label">Événements à Venir</p>
                                 <div class="stat-icon purple">
                                     <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
@@ -836,7 +836,7 @@ if (isset($_GET['event_id'])) {
 
                         <div class="stat-card">
                             <div class="stat-header">
-                                <p class="stat-label">Attended</p>
+                                <p class="stat-label">Participés</p>
                                 <div class="stat-icon green">
                                     <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
@@ -844,7 +844,7 @@ if (isset($_GET['event_id'])) {
                                 </div>
                             </div>
                             <p class="stat-value"><?php echo $past_count; ?></p>
-                            <p class="stat-meta">Events completed</p>
+                            <p class="stat-meta">Événements terminés</p>
                         </div>
                     </div>
                 </div>
@@ -852,9 +852,9 @@ if (isset($_GET['event_id'])) {
 
             <div class="content-area">
                 <div class="tabs-list">
-                    <button class="tab-trigger active" onclick="switchTab('upcoming')">Upcoming (<?php echo $upcoming_count; ?>)</button>
-                    <button class="tab-trigger" onclick="switchTab('past')">Past (<?php echo $past_count; ?>)</button>
-                    <button class="tab-trigger" onclick="switchTab('all')">All (<?php echo $total_count; ?>)</button>
+                    <button class="tab-trigger active" onclick="switchTab('upcoming')">À Venir (<?php echo $upcoming_count; ?>)</button>
+                    <button class="tab-trigger" onclick="switchTab('past')">Passés (<?php echo $past_count; ?>)</button>
+                    <button class="tab-trigger" onclick="switchTab('all')">Tous (<?php echo $total_count; ?>)</button>
                 </div>
 
                 <!-- Upcoming Tab -->
@@ -866,7 +866,7 @@ if (isset($_GET['event_id'])) {
                         });
                         
                         if (empty($upcoming_events)) {
-                            echo '<p style="text-align:center; color:#9ca3af; grid-column:1 / -1;">No upcoming events found</p>';
+                            echo '<p style="text-align:center; color:#9ca3af; grid-column:1 / -1;">Aucun événement à venir trouvé</p>';
                         } else {
                             foreach ($upcoming_events as $event) {
                                 echo createEventCardHTML($event);
@@ -885,7 +885,7 @@ if (isset($_GET['event_id'])) {
                         });
                         
                         if (empty($past_events)) {
-                            echo '<p style="text-align:center; color:#9ca3af; grid-column:1 / -1;">No past events found</p>';
+                            echo '<p style="text-align:center; color:#9ca3af; grid-column:1 / -1;">Aucun événement passé trouvé</p>';
                         } else {
                             foreach ($past_events as $event) {
                                 echo createEventCardHTML($event);
@@ -900,7 +900,7 @@ if (isset($_GET['event_id'])) {
                     <div class="events-grid">
                         <?php
                         if (empty($events)) {
-                            echo '<p style="text-align:center; color:#9ca3af; grid-column:1 / -1;">No events found</p>';
+                            echo '<p style="text-align:center; color:#9ca3af; grid-column:1 / -1;">Aucun événement trouvé</p>';
                         } else {
                             foreach ($events as $event) {
                                 echo createEventCardHTML($event);
@@ -925,7 +925,7 @@ if (isset($_GET['event_id'])) {
 
         async function showEventDetails(id) {
             try {
-                toggleModal(true, '<div style="color:#9ca3af;">Loading...</div>');
+                toggleModal(true, '<div style="color:#9ca3af;">Chargement...</div>');
                 const response = await fetch('MyEvents.php?event_id=' + id);
                 const event = await response.json();
                 
@@ -934,25 +934,25 @@ if (isset($_GET['event_id'])) {
                 }
                 
                 const dateObj = new Date(event.date_evenement);
-                const formattedDate = dateObj.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+                const formattedDate = dateObj.toLocaleDateString('fr-FR', { month:'short', day:'numeric', year:'numeric' });
                 const html = `
                     <div style="display:grid; gap:12px;">
                         <div><span class="muted">Club</span><div>${event.club_nom || ''}</div></div>
                         <div style="display:flex; gap:16px;">
                             <div><span class="muted">Date</span><div>${formattedDate}</div></div>
-                            <div><span class="muted">Status</span><div>${event.statut}</div></div>
+                            <div><span class="muted">Statut</span><div>${event.statut}</div></div>
                         </div>
-                        <div><span class="muted">Location</span><div>${event.lieu || 'TBA'}</div></div>
+                        <div><span class="muted">Lieu</span><div>${event.lieu || 'À déterminer'}</div></div>
                         <div><span class="muted">Description</span><div>${event.description || ''}</div></div>
                         <div style="display:flex; gap:16px;">
-                            <div><span class="muted">Attending</span><div>${event.participants_inscrits || 0}</div></div>
-                            <div><span class="muted">Capacity</span><div>${event.capacite_max || 0}</div></div>
+                            <div><span class="muted">Participants</span><div>${event.participants_inscrits || 0}</div></div>
+                            <div><span class="muted">Capacité</span><div>${event.capacite_max || 0}</div></div>
                         </div>
                     </div>
                 `;
                 setModalContent(event.nom, html);
             } catch (e) {
-                setModalContent('Error', '<div style="color:#ef4444;">Failed to load event: ' + e.message + '</div>');
+                setModalContent('Erreur', '<div style="color:#ef4444;">Échec du chargement de l\'événement: ' + e.message + '</div>');
             }
         }
 
@@ -987,8 +987,8 @@ if (isset($_GET['event_id'])) {
     <div id="eventModal" class="modal-backdrop" onclick="if(event.target===this) toggleModal(false)">
         <div class="modal">
             <div class="modal-header">
-                <div id="eventModalTitle" class="modal-title">Event Details</div>
-                <button class="modal-close" onclick="toggleModal(false)">Close</button>
+                <div id="eventModalTitle" class="modal-title">Détails de l'Événement</div>
+                <button class="modal-close" onclick="toggleModal(false)">Fermer</button>
             </div>
             <div id="eventModalBody" class="modal-body"></div>
         </div>
