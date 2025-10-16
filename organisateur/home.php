@@ -806,15 +806,7 @@ $user_clubs = get_user_clubs($current_user_id, 2);
                                 <path d="m21 21-4.35-4.35"></path>
                             </svg>
                             <input type="text" placeholder="Rechercher événements, clubs..." class="search-input">
-                        </div>
-                        
-                        <button class="notification-btn">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
-                                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
-                            </svg>
-                            <span class="notification-dot"></span>
-                        </button>
+                        </div> 
                     </div>
                 </div>
             </header>
@@ -929,7 +921,7 @@ $user_clubs = get_user_clubs($current_user_id, 2);
                                 <?php endif; ?>
                             </div>
                             
-                            <button class="btn btn-outline btn-full">Voir Tous les Événements</button>
+                            <a href="discoverevents.php" class="btn btn-outline btn-full">Voir Tous les Événements</a>
                         </div>
                     </div>
                     
@@ -1010,7 +1002,7 @@ $user_clubs = get_user_clubs($current_user_id, 2);
                                 <?php endif; ?>
                             </div>
                             
-                            <button class="btn btn-outline btn-full">Parcourir Tous les Clubs</button>
+                            <a href="MyClubs.php" class="btn btn-outline btn-full">Parcourir Tous les Clubs</a>
                         </div>
                     </div>
                 </div>
