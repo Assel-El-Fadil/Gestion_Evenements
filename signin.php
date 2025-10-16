@@ -6,10 +6,6 @@ require "database.php";
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
-if (!isset($_SESSION['recaptcha_ok']) || $_SESSION['recaptcha_ok'] !== true) {
-    header("Location: index.php");
-    exit();
-}
 
 db_connect();
 
