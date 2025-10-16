@@ -2,54 +2,107 @@
 
 require "database.php";
 
-$conn=db_connect();
+db_connect();
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
+    // reCAPTCHA v2 verification
+    $recaptcha_secret = '6LctZ-wrAAAAAPcmnvWM0ed8sXDZwsXcMnb3DU-_';
+    $recaptcha_response = isset($_POST['g-recaptcha-response']) ? trim($_POST['g-recaptcha-response']) : '';
+
+    if (empty($recaptcha_response)) {
+        $login_error = "Veuillez cocher la case reCAPTCHA.";
+    } else {
+        // Verify with Google
+        $verify_url = 'https://www.google.com/recaptcha/api/siteverify';
+        $post_fields = http_build_query([
+            'secret' => $recaptcha_secret,
+            'response' => $recaptcha_response,
+            'remoteip' => isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : null,
+        ]);
+
+        $verification_success = false;
+        $verification_score_error = null;
+
+        if (function_exists('curl_init')) {
+            $ch = curl_init($verify_url);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $post_fields);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+            $result = curl_exec($ch);
+            if ($result !== false) {
+                $decoded = json_decode($result, true);
+                $verification_success = isset($decoded['success']) && $decoded['success'] === true;
+            }
+            curl_close($ch);
+        } else {
+            $context = stream_context_create([
+                'http' => [
+                    'method' => 'POST',
+                    'header' => "Content-type: application/x-www-form-urlencoded\r\n",
+                    'content' => $post_fields,
+                    'timeout' => 10,
+                ]
+            ]);
+            $result = @file_get_contents($verify_url, false, $context);
+            if ($result !== false) {
+                $decoded = json_decode($result, true);
+                $verification_success = isset($decoded['success']) && $decoded['success'] === true;
+            }
+        }
+
+        if (!$verification_success) {
+            $login_error = "Vérification reCAPTCHA échouée. Veuillez réessayer.";
+        }
+    }
+
     $email = trim($_POST["email"]);
     $password = trim($_POST["password"]);
 
-    $stmt = $conn->prepare("SELECT idUtilisateur, mdp, role, nom, prenom FROM Utilisateur WHERE email = ?");
-    $stmt->bind_param("s", $email);
-    $stmt->execute();
-    $stmt->store_result();
+    if (!isset($login_error)) {
+        $stmt = $conn->prepare("SELECT idUtilisateur, mdp, role, nom, prenom FROM Utilisateur WHERE email = ?");
+        $stmt->bind_param("s", $email);
+        $stmt->execute();
+        $stmt->store_result();
 
-    if ($stmt->num_rows > 0) {
-        $stmt->bind_result($idUtilisateur, $hashed_password, $role, $nom, $prenom);
-        $stmt->fetch();
+        if ($stmt->num_rows > 0) {
+            $stmt->bind_result($idUtilisateur, $hashed_password, $role, $nom, $prenom);
+            $stmt->fetch();
 
-        if (password_verify($password, $hashed_password)) {
-            
-            session_start();
-            $_SESSION["user_id"] = $idUtilisateur;
-            $_SESSION["user_role"] = $role;
-            $_SESSION["user_name"] = $nom . " " . $prenom;
+            if (password_verify($password, $hashed_password)) {
+                
+                session_start();
+                $_SESSION["user_id"] = $idUtilisateur;
+                $_SESSION["user_role"] = $role;
+                $_SESSION["user_name"] = $nom . " " . $prenom;
 
-            // Redirect based on user role
-            switch($role) {
-                case 'organisateur':
-                    header("Location: organisateur/home.php");
-                    break;
-                case 'utilisateur':
-                    header("Location: utilisateur/home.php");
-                    break;
-                case 'admin':
-                    // Admin page not created yet - redirect to default or show message
-                    header("Location: admin/home.php"); // Temporary redirect
-                    break;
-                default:
-                    // Default fallback
-                    header("Location: utilisateur/home.php");
-                    break;
+                // Redirect based on user role
+                switch($role) {
+                    case 'organisateur':
+                        header("Location: organisateur/home.php");
+                        break;
+                    case 'utilisateur':
+                        header("Location: utilisateur/home.php");
+                        break;
+                    case 'admin':
+                        // Admin page not created yet - redirect to default or show message
+                        header("Location: organisateur/home.php"); // Temporary redirect
+                        break;
+                    default:
+                        // Default fallback
+                        header("Location: utilisateur/home.php");
+                        break;
+                }
+                exit();
+            } else {
+                $login_error = "Mot de passe incorrect.";
             }
-            exit();
         } else {
-            $login_error = "Mot de passe incorrect.";
+            $login_error = "Aucun compte trouvé avec cet email.";
         }
-    } else {
-        $login_error = "Aucun compte trouvé avec cet email.";
-    }
 
-    $stmt->close();
+        $stmt->close();
+    }
 }
 ?>
 <html lang="fr">
@@ -73,65 +126,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             padding: 1rem;
             position: relative;
             overflow: hidden;
-        }
-
-        .background {
-            position: absolute;
-            inset: 0;
-            background: oklch(0.145 0 0);
-        }
-
-        .background-overlay {
-            position: absolute;
-            inset: 0;
-            background: linear-gradient(45deg, rgba(255,255,255,0.1) 0%, transparent 50%, rgba(147,197,253,0.2) 100%);
-        }
-
-        .floating-element-1 {
-            position: absolute;
-            top: 5rem;
-            left: 5rem;
-            width: 18rem;
-            height: 18rem;
-            background: rgba(255,255,255,0.1);
-            border-radius: 50%;
-            filter: blur(48px);
-            animation: pulse 2s infinite;
-        }
-
-        .floating-element-2 {
-            position: absolute;
-            bottom: 5rem;
-            right: 5rem;
-            width: 24rem;
-            height: 24rem;
-            background: rgba(147,197,253,0.2);
-            border-radius: 50%;
-            filter: blur(48px);
-            animation: pulse 2s infinite;
-            animation-delay: 1s;
-        }
-
-        .floating-element-3 {
-            position: absolute;
-            top: 50%;
-            left: 25%;
-            width: 12rem;
-            height: 12rem;
-            background: rgba(191,219,254,0.15);
-            border-radius: 50%;
-            filter: blur(32px);
-            animation: pulse 2s infinite;
-            animation-delay: 0.5s;
-        }
-
-        @keyframes pulse {
-            0%, 100% {
-                opacity: 1;
-            }
-            50% {
-                opacity: 0.5;
-            }
         }
 
         .login-card {
@@ -359,13 +353,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         }
 
         @media (max-width: 640px) {
-            .floating-element-1,
-            .floating-element-2,
-            .floating-element-3 {
-                width: 8rem;
-                height: 8rem;
-            }
-            
             .login-card {
                 padding: 1.5rem;
             }
@@ -373,12 +360,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     </style>
 </head>
 <body>
-    <div class="background">
-        <div class="background-overlay"></div>
-        <div class="floating-element-1"></div>
-        <div class="floating-element-2"></div>
-        <div class="floating-element-3"></div>
-    </div>
+    <div class="bg-gradient"></div>
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
 
     <div class="login-card">
         <div class="header">
@@ -459,6 +443,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 </label>
             </div>
 
+            <div class="form-group">
+                <div class="g-recaptcha" data-sitekey="6LctZ-wrAAAAAAUQYBGQmmE0wscyVW-pfSIvEaNM"></div>
+            </div>
+
             <button type="submit" class="submit-button">
                 Se connecter
             </button>
@@ -504,5 +492,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             }
         });
     </script>
+    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
 </body>
 </html>
