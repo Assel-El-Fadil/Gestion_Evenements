@@ -326,7 +326,6 @@ if (isset($_GET['event_id'])) {
             background: rgba(255, 255, 255, 0.05);
             backdrop-filter: blur(40px);
             -webkit-backdrop-filter: blur(40px);
-            position: sticky;
             top: 0;
             z-index: 10;
         }

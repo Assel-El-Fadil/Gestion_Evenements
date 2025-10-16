@@ -385,7 +385,6 @@ if (isset($_GET['club_events'])) {
         border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         background: rgba(255, 255, 255, 0.05);
         backdrop-filter: blur(40px);
-        position: sticky;
         top: 0;
         z-index: 10;
       }
