@@ -70,6 +70,55 @@ try {
                 $stmtC->close();
             }
         }
+
+        if ($action === 'add_club') {
+            $organisateur_email = trim($_POST['organisateur_email'] ?? '');
+            $club_nom = trim($_POST['club_nom'] ?? '');
+            if ($organisateur_email === '' || $club_nom === '') {
+                throw new Exception("L'email de l'organisateur et le nom du club sont requis");
+            }
+            if (!filter_var($organisateur_email, FILTER_VALIDATE_EMAIL)) {
+                throw new Exception("Veuillez saisir un email valide");
+            }
+            // Ensure organizer exists
+            $user_stmt = $conn->prepare('SELECT idUtilisateur FROM Utilisateur WHERE email = ?');
+            $user_stmt->bind_param('s', $organisateur_email);
+            $user_stmt->execute();
+            $user_res = $user_stmt->get_result();
+            $user = $user_res->fetch_assoc();
+            $user_stmt->close();
+            if (!$user) {
+                throw new Exception("Aucun utilisateur avec cet email");
+            }
+            $organisateur_id = intval($user['idUtilisateur']);
+
+            // Check club name uniqueness
+            $chk = $conn->prepare('SELECT 1 FROM Club WHERE nom = ?');
+            $chk->bind_param('s', $club_nom);
+            $chk->execute();
+            $exists = $chk->get_result()->num_rows > 0;
+            $chk->close();
+            if ($exists) {
+                throw new Exception('Un club avec ce nom existe déjà');
+            }
+            // Create club
+            $stmt = $conn->prepare('INSERT INTO Club (nom,nbrMembres) VALUES (?, 1)');
+            $stmt->bind_param('s', $club_nom);
+            if ($stmt->execute()) {
+                $new_club_id = intval($conn->insert_id);
+                // Add organizer membership
+                $memb = $conn->prepare("INSERT INTO Adherence (idUtilisateur, idClub, position) VALUES (?, ?, 'organisateur')");
+                $memb->bind_param('ii', $organisateur_id, $new_club_id);
+                $memb->execute();
+                $memb->close();
+
+                $success_message = "Club ajouté avec succès et organisateur associé.";
+                $selected_club = $new_club_id;
+            } else {
+                throw new Exception("Erreur lors de l'ajout du club");
+            }
+            $stmt->close();
+        }
     }
 } catch (Exception $e) {
     $error_message = $e->getMessage();
@@ -89,13 +138,18 @@ if ($result) {
     $result->close();
 }
 
+// If no specific club selected, default to the first available club
+if ($selected_club === 0 && !empty($clubs)) {
+    $selected_club = intval($clubs[0]['idClub']);
+}
+
 // Users with search and pagination
 $where_conditions = [];
 $params = [];
 $param_types = '';
 
 if (!empty($search_query)) {
-    $where_conditions[] = "(nom LIKE ? OR prénom LIKE ? OR email LIKE ? OR filière LIKE ?)";
+    $where_conditions[] = "(nom LIKE ? OR prenom LIKE ? OR email LIKE ? OR filiere LIKE ?)";
     $search_param = "%$search_query%";
     $params = array_merge($params, [$search_param, $search_param, $search_param, $search_param]);
     $param_types .= 'ssss';
@@ -134,36 +188,21 @@ $result = $stmt->get_result();
 while ($row = $result->fetch_assoc()) { $users[] = $row; }
 $stmt->close();
 
-// Memberships (user-club with role) - filtered by selected club if specified
-if ($selected_club > 0) {
-    $sql_members = "SELECT a.idUtilisateur, a.idClub, COALESCE(a.position, 'membre') AS position,
-                           u.nom AS user_nom, u.prénom AS user_prenom,
-                           c.nom AS club_nom
-                    FROM Adherence a
-                    JOIN Utilisateur u ON u.idUtilisateur = a.idUtilisateur
-                    JOIN Club c ON c.idClub = a.idClub
-                    WHERE a.idClub = ?
-                    ORDER BY u.nom, u.prenom";
-    $stmt = $conn->prepare($sql_members);
-    $stmt->bind_param('i', $selected_club);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    while ($row = $result->fetch_assoc()) { $clubs_memberships[] = $row; }
-    $stmt->close();
-} else {
-    $sql_members = "SELECT a.idUtilisateur, a.idClub, COALESCE(a.position, 'membre') AS position,
-                           u.nom AS user_nom, u.prenom AS user_prenom,
-                           c.nom AS club_nom
-                    FROM Adherence a
-                    JOIN Utilisateur u ON u.idUtilisateur = a.idUtilisateur
-                    JOIN Club c ON c.idClub = a.idClub
-                    ORDER BY c.nom, u.nom, u.prenom";
-    $result = $conn->query($sql_members);
-    if ($result) {
-        while ($row = $result->fetch_assoc()) { $clubs_memberships[] = $row; }
-        $result->close();
-    }
-}
+// Memberships (user-club with role) - always filtered by selected club
+$sql_members = "SELECT a.idUtilisateur, a.idClub, COALESCE(a.position, 'membre') AS position,
+                       u.nom AS user_nom, u.prenom AS user_prenom, u.email AS user_email,
+                       c.nom AS club_nom
+                FROM Adherence a
+                JOIN Utilisateur u ON u.idUtilisateur = a.idUtilisateur
+                JOIN Club c ON c.idClub = a.idClub
+                WHERE a.idClub = ?
+                ORDER BY u.nom, u.prenom";
+$stmt = $conn->prepare($sql_members);
+$stmt->bind_param('i', $selected_club);
+$stmt->execute();
+$result = $stmt->get_result();
+while ($row = $result->fetch_assoc()) { $clubs_memberships[] = $row; }
+$stmt->close();
 
 db_close();
 ?>
@@ -236,6 +275,21 @@ db_close();
         .btn-danger { background: rgba(239,68,68,0.2); border-color: rgba(239,68,68,0.3); color:#fca5a5; }
         .btn-danger:hover { background: rgba(239,68,68,0.3); }
         .badge { display:inline-flex; align-items:center; padding:.2rem .5rem; border-radius:.4rem; font-size:.75rem; border:1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.06); }
+
+        /* Select dropdown visibility in dark theme */
+        select {
+            background-color: rgba(17,24,39,0.95);
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        select option {
+            background-color: #111827; /* dark */
+            color: #ffffff;
+        }
+        select option:hover, select option:checked {
+            background-color: #374151; /* highlight */
+            color: #ffffff;
+        }
 
         @media (max-width: 768px) {
             .dashboard { flex-direction: column; }
@@ -332,9 +386,9 @@ db_close();
                                         <tr>
                                             <td><?php echo intval($u['idUtilisateur']); ?></td>
                                             <td><?php echo htmlspecialchars($u['nom']); ?></td>
-                                            <td><?php echo htmlspecialchars($u['prénom']); ?></td>
+                                            <td><?php echo htmlspecialchars($u['prenom']); ?></td>
                                             <td><?php echo htmlspecialchars($u['email'] ?? ''); ?></td>
-                                            <td><?php echo htmlspecialchars($u['filière'] ?? ''); ?></td>
+                                            <td><?php echo htmlspecialchars($u['filiere'] ?? ''); ?></td>
                                             <td>
                                                 <form method="POST" onsubmit="return confirm('Supprimer cet utilisateur ?');" style="display:inline-block;">
                                                     <input type="hidden" name="action" value="delete_user">
@@ -389,6 +443,21 @@ db_close();
                     <?php endif; ?>
                 </section>
 
+                <section id="add-club" class="section-card">
+                    <div class="section-header">
+                        <h3 class="section-title">Ajouter club</h3>
+                        <span class="muted">Créer un nouveau club</span>
+                    </div>
+                    <form method="POST" style="display:flex; gap:.5rem; flex-wrap:wrap; align-items:center; justify-content:space-between;">
+                        <input type="hidden" name="action" value="add_club">
+                        <input type="text" name="club_nom" placeholder="Nom du club" required
+                               style="padding: .5rem .75rem; min-width: 300px; border:1px solid rgba(255,255,255,0.2); border-radius:.375rem; background: rgba(255,255,255,0.1); color:#fff;">
+                                <input type="email" name="organisateur_email" placeholder="Email de l'organisateur" required
+                                style="padding: .5rem .75rem; min-width: 300px; border:1px solid rgba(255,255,255,0.2); border-radius:.375rem; background: rgba(255,255,255,0.1); color:#fff;">       
+                        <button type="submit" class="btn" style="background: rgba(34,197,94,0.2); border-color: rgba(34,197,94,0.3); color: #86efac;">Ajouter</button>
+                    </form>
+                </section>
+
                 <section id="clubs" class="section-card">
                     <div class="section-header">
                         <h3 class="section-title">Gestion des Clubs</h3>
@@ -401,7 +470,6 @@ db_close();
                             <label for="club_select" style="color: #d1d5db; font-weight: 500;">Sélectionner un club:</label>
                             <select name="club" id="club_select" onchange="this.form.submit()" 
                                     style="padding: 0.5rem; border: 1px solid rgba(255,255,255,0.2); border-radius: 0.375rem; background: rgba(255,255,255,0.1); color: #fff; min-width: 200px;">
-                                <option value="0">Tous les clubs</option>
                                 <?php foreach ($clubs as $club): ?>
                                     <option value="<?php echo $club['idClub']; ?>" <?php echo $selected_club == $club['idClub'] ? 'selected' : ''; ?>>
                                         <?php echo htmlspecialchars($club['nom']); ?>
@@ -416,9 +484,7 @@ db_close();
                         <table class="table">
                             <thead>
                                 <tr>
-                                    <?php if ($selected_club == 0): ?>
-                                        <th>Club</th>
-                                    <?php endif; ?>
+                                    <th>Club</th>
                                     <th>Utilisateur</th>
                                     <th>Email</th>
                                     <th>Rôle</th>
@@ -428,33 +494,14 @@ db_close();
                             <tbody>
                                 <?php if (count($clubs_memberships) === 0): ?>
                                     <tr>
-                                        <td colspan="<?php echo $selected_club == 0 ? '5' : '4'; ?>" class="muted">
-                                            <?php if ($selected_club > 0): ?>
-                                                Aucun membre trouvé dans ce club
-                                            <?php else: ?>
-                                                Aucune adhésion trouvée
-                                            <?php endif; ?>
-                                        </td>
+                                        <td colspan="5" class="muted">Aucun membre trouvé dans ce club</td>
                                     </tr>
                                 <?php else: ?>
                                     <?php foreach ($clubs_memberships as $m): ?>
                                         <tr>
-                                            <?php if ($selected_club == 0): ?>
-                                                <td><?php echo htmlspecialchars($m['club_nom']); ?></td>
-                                            <?php endif; ?>
+                                            <td><?php echo htmlspecialchars($m['club_nom']); ?></td>
                                             <td><?php echo htmlspecialchars($m['user_nom'] . ' ' . $m['user_prenom']); ?></td>
-                                            <td>
-                                                <?php
-                                                // Get user email
-                                                $email_stmt = $conn->prepare('SELECT email FROM Utilisateur WHERE idUtilisateur = ?');
-                                                $email_stmt->bind_param('i', $m['idUtilisateur']);
-                                                $email_stmt->execute();
-                                                $email_result = $email_stmt->get_result();
-                                                $user_email = $email_result->fetch_assoc()['email'] ?? '';
-                                                $email_stmt->close();
-                                                echo htmlspecialchars($user_email);
-                                                ?>
-                                            </td>
+                                            <td><?php echo htmlspecialchars($m['user_email'] ?? ''); ?></td>
                                             <td>
                                                 <span class="badge" style="<?php echo strtolower($m['position']) === 'organisateur' ? 'background: rgba(59,130,246,0.2); border-color: rgba(59,130,246,0.3); color: #93c5fd;' : ''; ?>">
                                                     <?php echo htmlspecialchars($m['position']); ?>

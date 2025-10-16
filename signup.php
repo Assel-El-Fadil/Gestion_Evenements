@@ -15,7 +15,25 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $mdp = password_hash($_POST['password'], PASSWORD_BCRYPT);
     $role = "utilisateur";
 
-    $check = $conn->prepare("SELECT idUtilisateur FROM Utilisateur WHERE email = ? OR apogee = ?");
+    // 🔒 VALIDATION DATE DE NAISSANCE (17-50 ans)
+    $today = new DateTime();
+    $birthDate = new DateTime($dateNaissance);
+    $age = $today->diff($birthDate)->y;
+    
+    if ($age < 17 || $age > 50) {
+        echo "<script>alert('L\\'âge doit être compris entre 17 et 50 ans.'); window.history.back();</script>";
+        db_close();
+        exit;
+    }
+
+    // 🔒 VALIDATION NUMERO APOGEE (exactement 8 chiffres)
+    if (!preg_match('/^\d{8}$/', $apogee)) {
+        echo "<script>alert('Le numéro Apogée doit contenir exactement 8 chiffres.'); window.history.back();</script>";
+        db_close();
+        exit;
+    }
+
+    $check = $conn->prepare("SELECT idUtilisateur FROM utilisateur WHERE email = ? OR apogee = ?");
     $check->bind_param("ss", $email, $apogee);
     $check->execute();
     $result = $check->get_result();
@@ -40,13 +58,19 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $stmt->bind_param("sssssssss", $nom, $prenom, $dateNaissance, $annee, $filiere, $email, $mdp, $apogee, $role);
 
     if ($stmt->execute()) {
-        setcookie("user_email", $email, time() + 86400, "/");
-        setcookie("user_nom", $prenom . " " . $nom, time() + 86400, "/");
-        setcookie("user_role", $role, time() + 86400, "/");
-
+        // Récupérer l'ID du nouvel utilisateur
+        $new_user_id = $stmt->insert_id;
+        
+        // Démarrer la session pour le nouvel utilisateur
+        session_start();
+        $_SESSION["user_id"] = $new_user_id;
+        $_SESSION["user_role"] = $role;
+        $_SESSION["user_name"] = $prenom . " " . $nom;
+        
+        // Rediriger vers la page d'accueil
         echo "<script>
             alert('Inscription réussie ! Bienvenue $prenom.');
-            window.location.href = 'home.php'; 
+            window.location.href = 'organisateur/home.php'; 
         </script>";
     } else {
         echo "<script>alert('Erreur lors de l\\'inscription: " . addslashes($stmt->error) . "'); window.history.back();</script>";
@@ -57,7 +81,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
 db_close();
 ?>
-
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -373,6 +396,8 @@ db_close();
                         id="dateOfBirth" 
                         name="dateOfBirth"
                         required
+                        min="<?php echo date('Y-m-d', strtotime('-50 years')); ?>"
+                        max="<?php echo date('Y-m-d', strtotime('-17 years')); ?>"
                     >
                     <span class="error" id="dateOfBirthError"></span>
                 </div>
@@ -400,6 +425,7 @@ db_close();
                         title="Veuillez entrer exactement 8 chiffres"
                         maxlength="8"
                         required
+                        oninput="this.value = this.value.replace(/[^\d]/g, '')"
                     >
                     <span class="error" id="studentIdError"></span>
                 </div>
@@ -457,6 +483,26 @@ db_close();
     </div>
 
     <script>
+        // Fonction de validation de la date de naissance
+        function validateBirthDate(dateString) {
+            const today = new Date();
+            const birthDate = new Date(dateString);
+            const age = today.getFullYear() - birthDate.getFullYear();
+            const monthDiff = today.getMonth() - birthDate.getMonth();
+            
+            // Ajuster l'âge si l'anniversaire n'est pas encore arrivé cette année
+            const adjustedAge = monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate()) 
+                ? age - 1 
+                : age;
+            
+            return adjustedAge >= 17 && adjustedAge <= 50;
+        }
+
+        // Fonction de validation du numéro Apogée
+        function validateApogee(apogee) {
+            return /^\d{8}$/.test(apogee);
+        }
+
         document.getElementById('yearOfStudy').addEventListener('change', function() {
             const fieldOfStudyGroup = document.getElementById('fieldOfStudyGroup');
             const fieldOfStudy = document.getElementById('fieldOfStudy');
@@ -481,6 +527,22 @@ db_close();
                     errorElement.textContent = '';
                 }
             });
+        });
+
+        // 🔒 Validation en temps réel pour le champ Apogée
+        document.getElementById('studentId').addEventListener('input', function(e) {
+            const value = e.target.value;
+            const errorElement = document.getElementById('studentIdError');
+            
+            // Autoriser uniquement les chiffres
+            e.target.value = value.replace(/[^\d]/g, '');
+            
+            // Limiter à 8 caractères
+            if (e.target.value.length > 8) {
+                e.target.value = e.target.value.slice(0, 8);
+            }
+            
+            errorElement.textContent = '';
         });
 
         document.getElementById('signupForm').addEventListener('submit', function(e) {
@@ -512,6 +574,12 @@ db_close();
             if (!dateOfBirth) {
                 document.getElementById('dateOfBirthError').textContent = 'La date de naissance est requise';
                 isValid = false;
+            } else {
+                // 🔒 NOUVELLE VALIDATION DATE DE NAISSANCE
+                if (!validateBirthDate(dateOfBirth)) {
+                    document.getElementById('dateOfBirthError').textContent = 'L\'âge doit être compris entre 17 et 50 ans';
+                    isValid = false;
+                }
             }
 
             if (!institutionalEmail) {
@@ -528,6 +596,12 @@ db_close();
             if (!studentId) {
                 document.getElementById('studentIdError').textContent = 'L\'Apogée est requis';
                 isValid = false;
+            } else {
+                // 🔒 NOUVELLE VALIDATION NUMERO APOGEE
+                if (!validateApogee(studentId)) {
+                    document.getElementById('studentIdError').textContent = 'Le numéro Apogée doit contenir exactement 8 chiffres';
+                    isValid = false;
+                }
             }
 
             if (!yearOfStudy) {

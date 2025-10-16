@@ -2,13 +2,42 @@
 session_start();
 require_once '../database.php';
 
-// Get user ID from session
-$user_id = $_SESSION['user_id'] ?? 1;
-
-if (!$user_id) {
-    header("Location: ../index.php");
+// Vérifier si l'utilisateur est connecté
+if (!isset($_SESSION["user_id"])) {
+    header("Location: ../signin.php");
     exit();
 }
+
+// Get user ID from session
+$user_id = $_SESSION['user_id'] ?? 1;
+$search_query = trim($_GET['q'] ?? '');
+
+
+// Vérifier si l'utilisateur est connecté
+if (!isset($_SESSION["user_id"])) {
+    header("Location: ../signin.php");
+    exit();
+}
+
+$user_id = $_SESSION['user_id'];
+
+// Récupérer les informations de l'utilisateur
+$conn = db_connect();
+$user_sql = "SELECT nom, prenom, annee, filiere FROM utilisateur WHERE idUtilisateur = ?";
+$stmt_user = $conn->prepare($user_sql);
+$stmt_user->bind_param("i", $user_id);
+$stmt_user->execute();
+$result_user = $stmt_user->get_result();
+$user = $result_user->fetch_assoc();
+
+if (!$user) {
+    header("Location: ../signin.php");
+    exit();
+}
+
+$user_name = $user['prenom'] . ' ' . $user['nom'];
+$user_initials = strtoupper(substr($user['prenom'], 0, 1) . substr($user['nom'], 0, 1));
+$user_department = $user['annee'] . ' - ' . $user['filiere'];
 
 // Handle join request
 $join_success = false;
@@ -58,16 +87,23 @@ try {
     $member_of_clubs = (int)($row['cnt'] ?? 0);
     $stmt->close();
 
-    // 2) List ALL clubs with this user's role (if any) and event count
+    // 2) List clubs (optionally filtered) with user's role and event count
     $sql = "SELECT c.*, a.position, COUNT(e.idEvenement) AS event_count
             FROM club c
-            LEFT JOIN Adherence a ON a.idClub = c.idClub AND a.idUtilisateur = ?
-            LEFT JOIN Evenement e ON e.idClub = c.idClub
-            GROUP BY c.idClub
-            ORDER BY c.nom ASC";
+            LEFT JOIN adherence a ON a.idClub = c.idClub AND a.idUtilisateur = ?
+            LEFT JOIN evenement e ON e.idClub = c.idClub";
+    if ($search_query !== '') {
+        $sql .= " WHERE c.nom LIKE ?";
+    }
+    $sql .= " GROUP BY c.idClub ORDER BY c.nom ASC";
 
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param('i', $user_id);
+    if ($search_query !== '') {
+        $like = "%" . $search_query . "%";
+        $stmt->bind_param('is', $user_id, $like);
+    } else {
+        $stmt->bind_param('i', $user_id);
+    }
     $stmt->execute();
     $result = $stmt->get_result();
 
@@ -385,7 +421,6 @@ if (isset($_GET['club_events'])) {
         border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         background: rgba(255, 255, 255, 0.05);
         backdrop-filter: blur(40px);
-        position: sticky;
         top: 0;
         z-index: 10;
       }
@@ -690,11 +725,11 @@ if (isset($_GET['club_events'])) {
             <div class="sidebar-profile">
                 <div class="profile-card">
                     <div class="profile-avatar">
-                        <span>JS</span>
+                        <span><?php echo $user_initials; ?></span>
                     </div>
                     <div class="profile-info">
-                        <p class="profile-name">Jean Smith</p>
-                        <p class="profile-department">Informatique</p>
+                        <p class="profile-name"><?php echo htmlspecialchars($user_name); ?></p>
+                        <p class="profile-department"><?php echo htmlspecialchars($user_department); ?></p>
                     </div>
                 </div>
             </div>
@@ -711,25 +746,12 @@ if (isset($_GET['club_events'])) {
                         </div>
                         <div class="header-actions">
                             <div class="search-wrapper">
-                                <svg
-                                    class="search-icon"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        stroke-width="2"
-                                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                                    />
-                                </svg>
-                                <input
-                                    type="text"
-                                    class="search-input"
-                                    placeholder="Rechercher des clubs..."
-                                    id="searchInput"
-                                />
+                                <form method="GET" class="search-wrapper">
+                                    <svg class="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                                    </svg>
+                                    <input type="text" name="q" class="search-input" value="<?php echo htmlspecialchars($search_query); ?>" placeholder="Rechercher des clubs..." />
+                                </form>
                             </div>
                             <button class="notification-btn">
                                 <svg

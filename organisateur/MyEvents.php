@@ -2,41 +2,98 @@
 session_start();
 require_once '../database.php';
 
-// Get user ID from session
-$user_id = $_SESSION['user_id'] ?? 1;
-
-if (!$user_id) {
-    header("Location: ../index.php");
+// Vérifier si l'utilisateur est connecté
+if (!isset($_SESSION["user_id"])) {
+    header("Location: ../signin.php");
     exit();
 }
+
+// Get user ID from session
+$user_id = $_SESSION['user_id'] ?? 1;
+$search_query = trim($_GET['q'] ?? '');
+
+
+
+
+$user_id = $_SESSION['user_id'];
+
+// Récupérer les informations de l'utilisateur
+$conn = db_connect();
+$user_sql = "SELECT nom, prenom, annee, filiere FROM utilisateur WHERE idUtilisateur = ?";
+$stmt_user = $conn->prepare($user_sql);
+$stmt_user->bind_param("i", $user_id);
+$stmt_user->execute();
+$result_user = $stmt_user->get_result();
+$user = $result_user->fetch_assoc();
+
+if (!$user) {
+    header("Location: ../signin.php");
+    exit();
+}
+
+$user_name = $user['prenom'] . ' ' . $user['nom'];
+$user_initials = strtoupper(substr($user['prenom'], 0, 1) . substr($user['nom'], 0, 1));
+$user_department = $user['annee'] . ' - ' . $user['filiere'];
 
 // Fetch events from database
 try {
     $conn = db_connect();
     
-    // Global counters from evenement table
-    $total_sql = "SELECT COUNT(*) AS total FROM evenement";
-    $total_res = $conn->query($total_sql);
+    // Counters for events where the user is registered
+    $total_sql = "SELECT COUNT(*) AS total
+                  FROM inscription i
+                  JOIN evenement e ON e.idEvenement = i.idEvenement
+                  WHERE i.idUtilisateur = ?";
+    $stmt_cnt = $conn->prepare($total_sql);
+    $stmt_cnt->bind_param('i', $user_id);
+    $stmt_cnt->execute();
+    $total_res = $stmt_cnt->get_result();
     $total_row = $total_res ? $total_res->fetch_assoc() : ['total' => 0];
     $total_count = (int)($total_row['total'] ?? 0);
+    $stmt_cnt->close();
 
-    $upcoming_sql = "SELECT COUNT(*) AS cnt FROM evenement WHERE date >= CURDATE()";
-    $upcoming_res = $conn->query($upcoming_sql);
+    $upcoming_sql = "SELECT COUNT(*) AS cnt
+                     FROM inscription i
+                     JOIN evenement e ON e.idEvenement = i.idEvenement
+                     WHERE i.idUtilisateur = ? AND e.date >= CURDATE()";
+    $stmt_up = $conn->prepare($upcoming_sql);
+    $stmt_up->bind_param('i', $user_id);
+    $stmt_up->execute();
+    $upcoming_res = $stmt_up->get_result();
     $upcoming_row = $upcoming_res ? $upcoming_res->fetch_assoc() : ['cnt' => 0];
     $upcoming_count = (int)($upcoming_row['cnt'] ?? 0);
+    $stmt_up->close();
 
-    $past_sql = "SELECT COUNT(*) AS cnt FROM evenement WHERE date < CURDATE()";
-    $past_res = $conn->query($past_sql);
+    $past_sql = "SELECT COUNT(*) AS cnt
+                 FROM inscription i
+                 JOIN evenement e ON e.idEvenement = i.idEvenement
+                 WHERE i.idUtilisateur = ? AND e.date < CURDATE()";
+    $stmt_ps = $conn->prepare($past_sql);
+    $stmt_ps->bind_param('i', $user_id);
+    $stmt_ps->execute();
+    $past_res = $stmt_ps->get_result();
     $past_row = $past_res ? $past_res->fetch_assoc() : ['cnt' => 0];
     $past_count = (int)($past_row['cnt'] ?? 0);
+    $stmt_ps->close();
 
-    // Load ALL events to populate the bottom lists
-    $sql = "SELECT e.*, c.nom as club_nom 
-            FROM Evenement e 
-            LEFT JOIN Club c ON e.idClub = c.idClub 
-            ORDER BY e.date ASC";
+    // Load only events the user is registered for
+    $sql = "SELECT e.*, c.nom as club_nom
+            FROM inscription i
+            JOIN evenement e ON e.idEvenement = i.idEvenement
+            LEFT JOIN club c ON e.idClub = c.idClub
+            WHERE i.idUtilisateur = ?";
+    if ($search_query !== '') {
+        $sql .= " AND (e.titre LIKE ? OR c.nom LIKE ? OR e.lieu LIKE ?)";
+    }
+    $sql .= " ORDER BY e.date ASC";
     
     $stmt = $conn->prepare($sql);
+    if ($search_query !== '') {
+        $like = "%" . $search_query . "%";
+        $stmt->bind_param('isss', $user_id, $like, $like, $like);
+    } else {
+        $stmt->bind_param('i', $user_id);
+    }
     $stmt->execute();
     $result = $stmt->get_result();
     
@@ -55,7 +112,10 @@ try {
         $events[] = $event;
     }
     
-    // $events contains only the user's events; counters above are global
+    // Compteurs pour l'utilisateur connecté
+    $total_count = count($events);
+    $upcoming_count = count(array_filter($events, function($e) { return $e['is_upcoming']; }));
+    $past_count = $total_count - $upcoming_count;
     
     $stmt->close();
     db_close();
@@ -326,7 +386,6 @@ if (isset($_GET['event_id'])) {
             background: rgba(255, 255, 255, 0.05);
             backdrop-filter: blur(40px);
             -webkit-backdrop-filter: blur(40px);
-            position: sticky;
             top: 0;
             z-index: 10;
         }
@@ -773,11 +832,11 @@ if (isset($_GET['event_id'])) {
             <div class="sidebar-profile">
                 <div class="profile-card">
                     <div class="profile-avatar">
-                        <span>JS</span>
+                        <span><?php echo $user_initials; ?></span>
                     </div>
                     <div class="profile-info">
-                        <p class="profile-name">Jean Smith</p>
-                        <p class="profile-department">Informatique</p>
+                        <p class="profile-name"><?php echo htmlspecialchars($user_name); ?></p>
+                        <p class="profile-department"><?php echo htmlspecialchars($user_department); ?></p>
                     </div>
                 </div>
             </div>
@@ -794,10 +853,12 @@ if (isset($_GET['event_id'])) {
                         </div>
                         <div class="header-actions">
                             <div class="search-wrapper">
-                                <svg class="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                                </svg>
-                                <input type="text" class="search-input" placeholder="Rechercher des événements">
+                                <form method="GET" class="search-wrapper">
+                                    <svg class="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                                    </svg>
+                                    <input type="text" name="q" class="search-input" value="<?php echo htmlspecialchars($search_query); ?>" placeholder="Rechercher des événements, clubs...">
+                                </form>
                             </div>
                             <button class="notification-btn">
                                 <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">

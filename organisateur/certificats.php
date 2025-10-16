@@ -1,28 +1,34 @@
 <?php
-require "../database.php"; 
+session_start();
+require "../database.php";
 
+// Vérifier si l'utilisateur est connecté
+if (!isset($_SESSION["user_id"])) {
+    header("Location: ../signin.php");
+    exit();
+}
+
+$current_user_id = $_SESSION["user_id"];
 $conn = db_connect();
 
-session_start();
-$user_id = $_SESSION['user_id'] ?? 1;
-
-$sql_user = "SELECT nom, prenom, filiere FROM Utilisateur WHERE idUtilisateur = ?";
-$stmt_user = $conn->prepare($sql_user);
-$stmt_user->bind_param("i", $user_id);
+// Récupérer les informations de l'utilisateur
+$user_sql = "SELECT nom, prenom, annee, filiere FROM Utilisateur WHERE idUtilisateur = ?";
+$stmt_user = $conn->prepare($user_sql);
+$stmt_user->bind_param("i", $current_user_id);
 $stmt_user->execute();
 $result_user = $stmt_user->get_result();
 $user = $result_user->fetch_assoc();
 
 if (!$user) {
-    $user = [
-        'nom' => 'Dupont',
-        'prenom' => 'Jean',
-        'filiere' => 'Informatique'
-    ];
+    header("Location: ../signin.php");
+    exit();
 }
 
-$initials = strtoupper(substr($user['prenom'], 0, 1) . substr($user['nom'], 0, 1));
+$user_name = $user['prenom'] . ' ' . $user['nom'];
+$user_initials = strtoupper(substr($user['prenom'], 0, 1) . substr($user['nom'], 0, 1));
+$user_department = $user['annee'] . ' - ' . $user['filiere'];
 
+// Récupérer les attestations de l'utilisateur connecté
 $sql = "SELECT 
             a.idUtilisateur,
             a.idEvenement,
@@ -39,38 +45,53 @@ $sql = "SELECT
         JOIN Utilisateur u ON a.idUtilisateur = u.idUtilisateur
         JOIN Evenement e ON a.idEvenement = e.idEvenement
         JOIN Club c ON e.idClub = c.idClub
+        WHERE a.idUtilisateur = ?
         ORDER BY a.dateGeneration DESC";
 
-$result = $conn->query($sql);
+$stmt = $conn->prepare($sql);
+$stmt->bind_param("i", $current_user_id);
+$stmt->execute();
+$result = $stmt->get_result();
 $attestations = [];
 
 if ($result) {
     while ($row = $result->fetch_assoc()) {
         $attestations[] = $row;
     }
-} else {
-    echo "Erreur lors de la récupération des certificats : " . $conn->error;
 }
 
-$sql_total_certificats = "SELECT COUNT(*) as total FROM Attestation";
-$result_total = $conn->query($sql_total_certificats);
-$total_certificats = $result_total ? $result_total->fetch_assoc()['total'] : 0;
+// Statistiques pour l'utilisateur connecté
+$sql_total_certificats = "SELECT COUNT(*) as total FROM Attestation WHERE idUtilisateur = ?";
+$stmt_total = $conn->prepare($sql_total_certificats);
+$stmt_total->bind_param("i", $current_user_id);
+$stmt_total->execute();
+$result_total = $stmt_total->get_result();
+$total_certificats = $result_total->fetch_assoc()['total'] ?? 0;
 
 $sql_certificats_mois = "SELECT COUNT(*) as total_mois FROM Attestation 
-                         WHERE MONTH(dateGeneration) = MONTH(CURRENT_DATE()) 
+                         WHERE idUtilisateur = ? AND MONTH(dateGeneration) = MONTH(CURRENT_DATE()) 
                          AND YEAR(dateGeneration) = YEAR(CURRENT_DATE())";
-$result_mois = $conn->query($sql_certificats_mois);
-$certificats_mois = $result_mois ? $result_mois->fetch_assoc()['total_mois'] : 0;
+$stmt_mois = $conn->prepare($sql_certificats_mois);
+$stmt_mois->bind_param("i", $current_user_id);
+$stmt_mois->execute();
+$result_mois = $stmt_mois->get_result();
+$certificats_mois = $result_mois->fetch_assoc()['total_mois'] ?? 0;
 
 $sql_events_semestre = "SELECT COUNT(DISTINCT idEvenement) as total_events 
                         FROM Inscription 
-                        WHERE dateInscription >= DATE_SUB(CURRENT_DATE(), INTERVAL 6 MONTH)";
-$result_events = $conn->query($sql_events_semestre);
-$events_semestre = $result_events ? $result_events->fetch_assoc()['total_events'] : 0;
+                        WHERE idUtilisateur = ? AND dateInscription >= DATE_SUB(CURRENT_DATE(), INTERVAL 6 MONTH)";
+$stmt_events = $conn->prepare($sql_events_semestre);
+$stmt_events->bind_param("i", $current_user_id);
+$stmt_events->execute();
+$result_events = $stmt_events->get_result();
+$events_semestre = $result_events->fetch_assoc()['total_events'] ?? 0;
 
-$sql_clubs_actifs = "SELECT COUNT(DISTINCT idClub) as total_clubs FROM Adherence";
-$result_clubs = $conn->query($sql_clubs_actifs);
-$clubs_actifs = $result_clubs ? $result_clubs->fetch_assoc()['total_clubs'] : 0;
+$sql_clubs_actifs = "SELECT COUNT(DISTINCT idClub) as total_clubs FROM Adherence WHERE idUtilisateur = ?";
+$stmt_clubs = $conn->prepare($sql_clubs_actifs);
+$stmt_clubs->bind_param("i", $current_user_id);
+$stmt_clubs->execute();
+$result_clubs = $stmt_clubs->get_result();
+$clubs_actifs = $result_clubs->fetch_assoc()['total_clubs'] ?? 0;
 
 $conn->close();
 ?>
@@ -643,13 +664,15 @@ $conn->close();
         .profile-name { color: #ffffff; font-weight: 500; font-size: 1rem; line-height: 1.5; }
         .profile-department { color: #9ca3af; font-size: 0.875rem; line-height: 1.5; }
     </style>
-    </head>
-    <body>
-        <div class="bg-gradient"></div>
-        <div class="orb orb-1"></div>
-        <div class="orb orb-2"></div>
-<div class="container">
-    <aside class="sidebar">
+
+</head>
+<body>
+    <div class="bg-gradient"></div>
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    
+    <div class="container">
+        <aside class="sidebar">
             <div class="sidebar-header">
                 <h1 class="sidebar-title">ClubConnect</h1>
                 <p class="sidebar-subtitle">Tableau de Bord Étudiant</p>
@@ -720,17 +743,17 @@ $conn->close();
             <div class="sidebar-profile">
                 <div class="profile-card">
                     <div class="profile-avatar">
-                        <span>JS</span>
+                        <span><?php echo $user_initials; ?></span>
                     </div>
                     <div class="profile-info">
-                        <p class="profile-name">Jean Smith</p>
-                        <p class="profile-department">Informatique</p>
+                        <p class="profile-name"><?php echo htmlspecialchars($user_name); ?></p>
+                        <p class="profile-department"><?php echo htmlspecialchars($user_department); ?></p>
                     </div>
                 </div>
             </div>
         </aside>
 
-    <main class="main-content">
+        <main class="main-content">
         <div class="content-wrapper">
             <div class="page-header">
                 <div class="header-top">
@@ -849,6 +872,7 @@ $conn->close();
             </div>
         </div>
     </main>
-</div>
+
+    </div>
 </body>
 </html>
