@@ -1,6 +1,32 @@
 <?php
-
+session_start();
 require "../database.php";
+
+// Vérifier si l'utilisateur est connecté
+if (!isset($_SESSION["user_id"])) {
+    header("Location: ../signin.php");
+    exit();
+}
+
+$current_user_id = $_SESSION["user_id"];
+
+// Récupérer les informations de l'utilisateur
+$conn = db_connect();
+$user_sql = "SELECT nom, prenom, annee, filiere FROM Utilisateur WHERE idUtilisateur = ?";
+$stmt_user = $conn->prepare($user_sql);
+$stmt_user->bind_param("i", $current_user_id);
+$stmt_user->execute();
+$result_user = $stmt_user->get_result();
+$user = $result_user->fetch_assoc();
+
+if (!$user) {
+    header("Location: ../signin.php");
+    exit();
+}
+
+$user_name = $user['prenom'] . ' ' . $user['nom'];
+$user_initials = strtoupper(substr($user['prenom'], 0, 1) . substr($user['nom'], 0, 1));
+$user_department = $user['annee'] . ' - ' . $user['filiere'];
 
 $success_message = '';
 $error_message = '';
@@ -91,6 +117,8 @@ function getFormattedDate($dateField) {
     return 'Sélectionner une date';
 }
 
+// Récupérer les clubs de l'utilisateur
+$user_clubs = get_user_clubs($current_user_id, 10);
 ?>
 
 <html lang="fr">
@@ -701,86 +729,87 @@ function getFormattedDate($dateField) {
     </style>
 </head>
 <body>
-        <div class="bg-gradient"></div>
+    <div class="bg-gradient"></div>
     <div class="orb orb-1"></div>
     <div class="orb orb-2"></div>
         
     <div class="dashboard">
-            <aside class="sidebar">
+        <aside class="sidebar">
             <div class="sidebar-header">
                 <h1 class="sidebar-title">ClubConnect</h1>
                 <p class="sidebar-subtitle">Tableau de Bord Étudiant</p>
-                </div>
+            </div>
 
             <nav class="sidebar-nav">
-                    <a href="home.php" class="nav-item">
-                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-                            <polyline points="9 22 9 12 15 12 15 22"></polyline>
-                        </svg>
-                        <span>Tableau de Bord</span>
-                    </a>
-                    <a href="discoverevents.php" class="nav-item">
-                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="11" cy="11" r="8"></circle>
-                            <path d="m21 21-4.35-4.35"></path>
-                        </svg>
-                        <span>Découvrir Événements</span>
-                    </a>
-                    <a href="MyEvents.php" class="nav-item">
-                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                            <line x1="16" y1="2" x2="16" y2="6"></line>
-                            <line x1="8" y1="2" x2="8" y2="6"></line>
-                            <line x1="3" y1="10" x2="21" y2="10"></line>
-                        </svg>
-                        <span>Mes Événements</span>
-                    </a>
-                    <a href="createevent.php" class="nav-item nav-item-active">
-                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <line x1="12" y1="5" x2="12" y2="19"></line>
-                            <line x1="5" y1="12" x2="19" y2="12"></line>
-                        </svg>
-                        <span>Créer Événement</span>
-                    </a>
-                    <a href="MyClubs.php" class="nav-item">
-                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                            <circle cx="9" cy="7" r="4"></circle>
-                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                        </svg>
-                        <span>Mes Clubs</span>
-                    </a>
-                    <a href="communication.php" class="nav-item">
-                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-                            <polyline points="22,6 12,13 2,6"></polyline>
-                        </svg>
-                        <span>Communications</span>
-                    </a>
-                    <a href="certificats.php" class="nav-item">
-                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="12" cy="8" r="7"></circle>
-                            <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline>
-                        </svg>
-                        <span>Certificats</span>
-                    </a>
-                </nav>
+                <a href="home.php" class="nav-item">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                        <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                    </svg>
+                    <span>Tableau de Bord</span>
+                </a>
+                <a href="discoverevents.php" class="nav-item">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <path d="m21 21-4.35-4.35"></path>
+                    </svg>
+                    <span>Découvrir Événements</span>
+                </a>
+                <a href="MyEvents.php" class="nav-item">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                        <line x1="16" y1="2" x2="16" y2="6"></line>
+                        <line x1="8" y1="2" x2="8" y2="6"></line>
+                        <line x1="3" y1="10" x2="21" y2="10"></line>
+                    </svg>
+                    <span>Mes Événements</span>
+                </a>
+                <a href="createevent.php" class="nav-item nav-item-active">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    <span>Créer Événement</span>
+                </a>
+                <a href="MyClubs.php" class="nav-item">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
+                    <span>Mes Clubs</span>
+                </a>
+                <a href="communication.php" class="nav-item">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                        <polyline points="22,6 12,13 2,6"></polyline>
+                    </svg>
+                    <span>Communications</span>
+                </a>
+                <a href="certificats.php" class="nav-item">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="8" r="7"></circle>
+                        <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline>
+                    </svg>
+                    <span>Certificats</span>
+                </a>
+            </nav>
 
             <div class="sidebar-profile">
                 <div class="profile-card">
                     <div class="profile-avatar">
-                        <span>JS</span>
+                        <span><?php echo $user_initials; ?></span>
                     </div>
                     <div class="profile-info">
-                        <p class="profile-name">Jean Smith</p>
-                        <p class="profile-department">Informatique</p>
-                    </div>
+                        <p class="profile-name"><?php echo htmlspecialchars($user_name); ?></p>
+                        <p class="profile-department"><?php echo htmlspecialchars($user_department); ?></p>
                     </div>
                 </div>
-            </aside>
-            <main class="main-content">
+            </div>
+        </aside>
+
+        <main class="main-content">
             <div class="content-container">
                 <div class="header">
                     <div class="header-content">
@@ -789,156 +818,154 @@ function getFormattedDate($dateField) {
                             <p class="header-subtitle">Remplissez les détails ci-dessous pour créer votre événement</p>
                         </div>
                     </div>
-                    </div>
+                </div>
 
-                    <?php if ($success_message): ?>
+                <?php if ($success_message): ?>
                     <div class="success-message">
-                            <?php echo htmlspecialchars($success_message); ?>
-                        </div>
-                    <?php endif; ?>
-                    
-                    <?php if ($error_message): ?>
+                        <?php echo htmlspecialchars($success_message); ?>
+                    </div>
+                <?php endif; ?>
+                
+                <?php if ($error_message): ?>
                     <div class="error-message">
-                            <?php echo htmlspecialchars($error_message); ?>
-                        </div>
-                    <?php endif; ?>
+                        <?php echo htmlspecialchars($error_message); ?>
+                    </div>
+                <?php endif; ?>
 
-                    <form method="POST" enctype="multipart/form-data" class="form-grid">
-                        <div class="form-fields">
-                            <div class="form-card">
+                <form method="POST" enctype="multipart/form-data" class="form-grid">
+                    <div class="form-fields">
+                        <div class="form-card">
                             <label>Titre de l'Événement *</label>
                             <input type="text" name="event_title" placeholder="Entrez le titre de l'événement" 
-                                       value="<?php echo getFormValue('event_title'); ?>" required>
-                            </div>
+                                   value="<?php echo getFormValue('event_title'); ?>" required>
+                        </div>
 
-                            <div class="form-card">
+                        <div class="form-card">
                             <label>Description de l'Événement *</label>
                             <textarea name="event_description" rows="5" 
-                                          placeholder="Décrivez votre événement en détail..." required><?php echo getFormValue('event_description'); ?></textarea>
-                            </div>
+                                      placeholder="Décrivez votre événement en détail..." required><?php echo getFormValue('event_description'); ?></textarea>
+                        </div>
 
-                            <div class="form-card">
+                        <div class="form-card">
                             <label>Date de l'Événement *</label>
                             <input type="date" name="event_date" 
-                                       value="<?php echo getFormValue('event_date'); ?>" required>
-                            </div>
+                                   value="<?php echo getFormValue('event_date'); ?>" required>
+                        </div>
 
-                            <div class="form-card">
+                        <div class="form-card">
                             <label>Lieu *</label>
                             <input type="text" name="event_location" placeholder="Entrez le lieu ou le numéro de salle"
-                                       value="<?php echo getFormValue('event_location'); ?>" required>
-                            </div>
+                                   value="<?php echo getFormValue('event_location'); ?>" required>
+                        </div>
 
-                            <div class="form-row">
+                        <div class="form-row">
                             <div class="form-group">
                                 <label>Capacité Maximale</label>
                                 <input type="number" name="event_capacity" placeholder="50"
-                                           value="<?php echo getFormValue('event_capacity'); ?>">
-                                </div>
+                                       value="<?php echo getFormValue('event_capacity'); ?>">
+                            </div>
                             <div class="form-group">
                                 <label>Catégorie *</label>
                                 <select name="event_category" required>
-                                        <option value="">Sélectionnez une catégorie</option>
-                                        <option value="workshop" <?php echo (getFormValue('event_category') === 'workshop') ? 'selected' : ''; ?>>Atelier</option>
-                                        <option value="seminar" <?php echo (getFormValue('event_category') === 'seminar') ? 'selected' : ''; ?>>Séminaire</option>
-                                        <option value="networking" <?php echo (getFormValue('event_category') === 'networking') ? 'selected' : ''; ?>>Réseautage</option>
-                                        <option value="social" <?php echo (getFormValue('event_category') === 'social') ? 'selected' : ''; ?>>Social</option>
-                                        <option value="competition" <?php echo (getFormValue('event_category') === 'competition') ? 'selected' : ''; ?>>Compétition</option>
-                                        <option value="meeting" <?php echo (getFormValue('event_category') === 'meeting') ? 'selected' : ''; ?>>Réunion</option>
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div class="form-card">
-                            <label>Club Organisateur *</label>
-                            <select name="event_club" required>
-                                    <option value="">Sélectionnez un club</option>
-                                    <?php 
-                                    $clubs = get_user_clubs(1, 10);
-                                    foreach ($clubs as $club): ?>
-                                        <option value="<?php echo $club['idClub']; ?>" 
-                                                <?php echo (getFormValue('event_club') == $club['idClub']) ? 'selected' : ''; ?>>
-                                            <?php echo htmlspecialchars($club['nom']); ?>
-                                        </option>
-                                    <?php endforeach; ?>
+                                    <option value="">Sélectionnez une catégorie</option>
+                                    <option value="workshop" <?php echo (getFormValue('event_category') === 'workshop') ? 'selected' : ''; ?>>Atelier</option>
+                                    <option value="seminar" <?php echo (getFormValue('event_category') === 'seminar') ? 'selected' : ''; ?>>Séminaire</option>
+                                    <option value="networking" <?php echo (getFormValue('event_category') === 'networking') ? 'selected' : ''; ?>>Réseautage</option>
+                                    <option value="social" <?php echo (getFormValue('event_category') === 'social') ? 'selected' : ''; ?>>Social</option>
+                                    <option value="competition" <?php echo (getFormValue('event_category') === 'competition') ? 'selected' : ''; ?>>Compétition</option>
+                                    <option value="meeting" <?php echo (getFormValue('event_category') === 'meeting') ? 'selected' : ''; ?>>Réunion</option>
                                 </select>
                             </div>
+                        </div>
 
-                            <div class="form-card">
+                        <div class="form-card">
+                            <label>Club Organisateur *</label>
+                            <select name="event_club" required>
+                                <option value="">Sélectionnez un club</option>
+                                <?php foreach ($user_clubs as $club): ?>
+                                    <option value="<?php echo $club['idClub']; ?>" 
+                                            <?php echo (getFormValue('event_club') == $club['idClub']) ? 'selected' : ''; ?>>
+                                        <?php echo htmlspecialchars($club['nom']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
+                        <div class="form-card">
                             <label>Image de l'Événement</label>
-                                <div class="file-upload" onclick="document.getElementById('event_photo').click()">
-                                    <svg class="upload-icon" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <div class="file-upload" onclick="document.getElementById('event_photo').click()">
+                                <svg class="upload-icon" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                                    <circle cx="12" cy="13" r="4"/>
+                                </svg>
+                                <p class="upload-text">Glissez-déposez une image ici, ou cliquez pour parcourir</p>
+                                <p class="upload-subtext">PNG, JPG, GIF jusqu'à 10MB</p>
+                                <input type="file" name="event_photo" id="event_photo" accept="image/*" style="display: none;">
+                                
+                                <div class="file-preview" id="file-preview"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="preview-column">
+                        <div class="preview-card">
+                            <h3 class="preview-title">Aperçu de l'Événement</h3>
+                            <div class="preview-content">
+                                <div class="preview-image" id="preview-image-container">
+                                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
                                         <circle cx="12" cy="13" r="4"/>
                                     </svg>
-                                    <p class="upload-text">Glissez-déposez une image ici, ou cliquez pour parcourir</p>
-                                    <p class="upload-subtext">PNG, JPG, GIF jusqu'à 10MB</p>
-                                <input type="file" name="event_photo" id="event_photo" accept="image/*" style="display: none;">
-                                    
-                                    <div class="file-preview" id="file-preview"></div>
+                                </div>
+                                <div class="preview-text">
+                                    <h4 class="preview-event-title"><?php echo getFormValue('event_title') ?: 'Titre de l\'événement ici'; ?></h4>
+                                    <p class="preview-event-desc"><?php echo getFormValue('event_description') ?: 'La description de l\'événement apparaîtra ici...'; ?></p>
+                                </div>
+                                <div class="preview-details">
+                                    <div class="preview-detail-item">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                                            <line x1="16" y1="2" x2="16" y2="6"/>
+                                            <line x1="8" y1="2" x2="8" y2="6"/>
+                                            <line x1="3" y1="10" x2="21" y2="10"/>
+                                        </svg>
+                                        <span><?php echo getFormattedDate('event_date'); ?></span>
+                                    </div>
+                                    <div class="preview-detail-item">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <circle cx="12" cy="12" r="10"/>
+                                            <polyline points="12 6 12 12 16 14"/>
+                                        </svg>
+                                        <span>Toute la journée</span>
+                                    </div>
+                                    <div class="preview-detail-item">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                                            <circle cx="12" cy="10" r="3"/>
+                                        </svg>
+                                        <span><?php echo getFormValue('event_location') ?: 'Entrez le lieu'; ?></span>
+                                    </div>
+                                    <div class="preview-detail-item">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                                            <circle cx="9" cy="7" r="4"/>
+                                            <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+                                            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                                        </svg>
+                                        <span>0 / <?php echo isset($_POST['event_capacity']) ? intval($_POST['event_capacity']) : 0; ?> participants</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="preview-column">
-                            <div class="preview-card">
-                                <h3 class="preview-title">Aperçu de l'Événement</h3>
-                                <div class="preview-content">
-                                    <div class="preview-image" id="preview-image-container">
-                                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-                                            <circle cx="12" cy="13" r="4"/>
-                                        </svg>
-                                    </div>
-                                    <div class="preview-text">
-                                        <h4 class="preview-event-title"><?php echo getFormValue('event_title') ?: 'Titre de l\'événement ici'; ?></h4>
-                                        <p class="preview-event-desc"><?php echo getFormValue('event_description') ?: 'La description de l\'événement apparaîtra ici...'; ?></p>
-                                    </div>
-                                    <div class="preview-details">
-                                        <div class="preview-detail-item">
-                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                                                <line x1="16" y1="2" x2="16" y2="6"/>
-                                                <line x1="8" y1="2" x2="8" y2="6"/>
-                                                <line x1="3" y1="10" x2="21" y2="10"/>
-                                            </svg>
-                                            <span><?php echo getFormattedDate('event_date'); ?></span>
-                                        </div>
-                                        <div class="preview-detail-item">
-                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                                <circle cx="12" cy="12" r="10"/>
-                                                <polyline points="12 6 12 12 16 14"/>
-                                            </svg>
-                                            <span>Toute la journée</span>
-                                        </div>
-                                        <div class="preview-detail-item">
-                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-                                                <circle cx="12" cy="10" r="3"/>
-                                            </svg>
-                                            <span><?php echo getFormValue('event_location') ?: 'Entrez le lieu'; ?></span>
-                                        </div>
-                                        <div class="preview-detail-item">
-                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
-                                                <circle cx="9" cy="7" r="4"/>
-                                                <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
-                                                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-                                            </svg>
-                                            <span>0 / <?php echo isset($_POST['event_capacity']) ? intval($_POST['event_capacity']) : 0; ?> participants</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="button-group">
+                        <div class="button-group">
                             <button type="submit" class="btn">Créer l'Événement</button>
                             <a href="home.php" class="btn btn-outline">Annuler</a>
-                            </div>
                         </div>
-                    </form>
-                </div>
-            </main>
+                    </div>
+                </form>
+            </div>
+        </main>
     </div>
 
     <script>

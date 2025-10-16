@@ -1,13 +1,31 @@
 <?php
-
+session_start();
 require "../database.php";
 
-$current_user_id = 1;
+// Vérifier si l'utilisateur est connecté
+if (!isset($_SESSION["user_id"])) {
+    header("Location: ../signin.php");
+    exit();
+}
+
+$current_user_id = $_SESSION["user_id"];
 $upcoming_events = get_upcoming_events(5);
 $user_clubs = get_user_clubs($current_user_id, 2);
 
-?>
+// Récupérer les informations complètes de l'utilisateur
+$conn = db_connect();
+$user_sql = "SELECT nom, prenom, annee, filiere FROM Utilisateur WHERE idUtilisateur = ?";
+$stmt = $conn->prepare($user_sql);
+$stmt->bind_param("i", $current_user_id);
+$stmt->execute();
+$result = $stmt->get_result();
+$user = $result->fetch_assoc();
+$stmt->close();
 
+$user_name = $user ? $user['prenom'] . ' ' . $user['nom'] : 'Utilisateur';
+$user_initials = $user ? strtoupper(substr($user['prenom'], 0, 1) . substr($user['nom'], 0, 1)) : 'U';
+$user_department = $user ? $user['annee'] . ' - ' . $user['filiere'] : 'Étudiant';
+?>
 
 <html lang="fr">
 <head>
@@ -719,7 +737,7 @@ $user_clubs = get_user_clubs($current_user_id, 2);
         <aside class="sidebar">
             <div class="sidebar-header">
                 <h1 class="sidebar-title">ClubConnect</h1>
-                <p class="sidebar-subtitle">Tableau de Bord Étudiant</p>
+                <p class="sidebar-subtitle">Tableau de Bord Organisateur</p>
             </div>
             
             <nav class="sidebar-nav">
@@ -778,24 +796,24 @@ $user_clubs = get_user_clubs($current_user_id, 2);
                 </a>
             </nav>
             
-            <div class="sidebar-profile">
-                <div class="profile-card">
-                    <div class="profile-avatar">
-                        <span>JS</span>
-                    </div>
-                    <div class="profile-info">
-                        <p class="profile-name">Jean Smith</p>
-                        <p class="profile-department">Informatique</p>
-                    </div>
-                </div>
-            </div>
+<div class="sidebar-profile">
+    <div class="profile-card">
+        <div class="profile-avatar">
+            <span><?php echo $user_initials; ?></span>
+        </div>
+        <div class="profile-info">
+            <p class="profile-name"><?php echo htmlspecialchars($user_name); ?></p>
+            <p class="profile-department"><?php echo htmlspecialchars($user_department); ?></p>
+        </div>
+    </div>
+</div>
         </aside>
         
         <main class="main-content">
             <header class="header">
                 <div class="header-content">
                     <div class="header-text">
-                        <h2 class="header-title">Bon retour, Jean !</h2>
+                        <h2 class="header-title">Bon retour, <?php echo htmlspecialchars(explode(' ', $user_name)[0]); ?> !</h2>
                         <p class="header-subtitle">Voici ce qui se passe dans vos clubs aujourd'hui</p>
                     </div>
                     

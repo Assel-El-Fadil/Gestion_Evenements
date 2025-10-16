@@ -1,16 +1,64 @@
 <?php
-
-use PHPMailer\PHPMailer\PHPMailer;
-use PHPMailer\PHPMailer\SMTP;
-use PHPMailer\PHPMailer\Exception;
-
 session_start();
-require 'vendor/autoload.php';
-require '../database.php';
+require "../database.php";
+
+// Vérifier si l'utilisateur est connecté
+if (!isset($_SESSION["user_id"])) {
+    header("Location: ../signin.php");
+    exit();
+}
+
+$current_user_id = $_SESSION["user_id"];
+
+// Récupérer les informations de l'utilisateur
+$conn = db_connect();
+$user_sql = "SELECT nom, prenom, annee, filiere FROM Utilisateur WHERE idUtilisateur = ?";
+$stmt_user = $conn->prepare($user_sql);
+$stmt_user->bind_param("i", $current_user_id);
+$stmt_user->execute();
+$result_user = $stmt_user->get_result();
+$user = $result_user->fetch_assoc();
+
+if (!$user) {
+    header("Location: ../signin.php");
+    exit();
+}
+
+$user_name = $user['prenom'] . ' ' . $user['nom'];
+$user_initials = strtoupper(substr($user['prenom'], 0, 1) . substr($user['nom'], 0, 1));
+$user_department = $user['annee'] . ' - ' . $user['filiere'];
 
 $success_message = '';
 $error_message = '';
-$user_id = $_SESSION['user_id'] ?? 1;
+
+// Load join requests for clubs managed by current user (organisateur)
+$requests = [];
+try {
+    $conn = db_connect();
+    $conn->set_charset('utf8mb4');
+
+    $sql = "SELECT r.idUtilisateur, r.idClub, u.nom, u.prenom, u.apogee, u.email, c.nom AS club_nom
+            FROM requete r
+            JOIN utilisateur u ON u.idUtilisateur = r.idUtilisateur
+            JOIN club c ON c.idClub = r.idClub
+            WHERE r.idClub IN (
+                SELECT idClub FROM adherence WHERE idUtilisateur = ? AND position = 'organisateur'
+            )
+            ORDER BY c.nom ASC, u.nom ASC, u.prenom ASC";
+
+    $stmt = $conn->prepare($sql);
+    if ($stmt) {
+        $stmt->bind_param('i', $current_user_id);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        while ($row = $res->fetch_assoc()) {
+            $requests[] = $row;
+        }
+        $stmt->close();
+    }
+} catch (Exception $e) {
+    // keep $requests empty on error
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
@@ -25,7 +73,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             // Verify current user is organiser of this club
             $authStmt = $conn->prepare("SELECT 1 FROM adherence WHERE idUtilisateur = ? AND idClub = ? AND position = 'organisateur' LIMIT 1");
-            $authStmt->bind_param('ii', $user_id, $reqClubId);
+            $authStmt->bind_param('ii', $current_user_id, $reqClubId);
             $authStmt->execute();
             $isOrganiser = $authStmt->get_result()->num_rows > 0;
             $authStmt->close();
@@ -56,6 +104,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $delStmt->close();
 
                 $success_message = "Requête approuvée et membre ajouté.";
+                
+                // Refresh requests list
+                $requests = array_filter($requests, function($req) use ($reqUserId, $reqClubId) {
+                    return !($req['idUtilisateur'] == $reqUserId && $req['idClub'] == $reqClubId);
+                });
+                
             } elseif ($action === 'reject') {
                 // Just remove from requete
                 $delStmt = $conn->prepare("DELETE FROM requete WHERE idUtilisateur = ? AND idClub = ?");
@@ -63,127 +117,100 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $delStmt->execute();
                 $delStmt->close();
                 $success_message = "Requête rejetée et supprimée.";
+                
+                // Refresh requests list
+                $requests = array_filter($requests, function($req) use ($reqUserId, $reqClubId) {
+                    return !($req['idUtilisateur'] == $reqUserId && $req['idClub'] == $reqClubId);
+                });
             } else {
                 throw new Exception("Action de requête invalide.");
             }
 
-            // Skip email handling for this post
         } else {
+            // Handle email sending
             $recipient = $_POST['recipient'] ?? '';
             $recipient_type = $_POST['recipient-type'] ?? 'custom';
             $subject = $_POST['subject'] ?? '';
             $message = $_POST['message'] ?? '';
         
-        if (empty($subject) || empty($message)) {
-            throw new Exception("Le sujet et le message sont obligatoires.");
-        }
-        
-        $recipients = [];
-        
-        if ($recipient_type === 'custom' && !empty($recipient)) {
-            $recipients = array_map('trim', explode(',', $recipient));
-        } else {
-            $conn = db_connect();
-            
-            $conn->set_charset("utf8mb4");
-            
-            switch ($recipient_type) {
-                case 'all-members':
-                    $sql = "SELECT DISTINCT u.email 
-                            FROM Utilisateur u 
-                            JOIN Adhérence a ON u.idUtilisateur = a.idUtilisateur 
-                            WHERE a.idClub = ?";
-                    $stmt = $conn->prepare($sql);
-                    $club_id = 1;
-                    $stmt->bind_param("i", $club_id);
-                    break;
-                    
-                case 'event-attendees':
-                    $sql = "SELECT DISTINCT u.email 
-                            FROM Utilisateur u 
-                            JOIN Inscription i ON u.idUtilisateur = i.idUtilisateur 
-                            JOIN Événement e ON i.idEvenement = e.idEvenement 
-                            WHERE e.idClub = ?";
-                    $stmt = $conn->prepare($sql);
-                    $club_id = 1;
-                    $stmt->bind_param("i", $club_id);
-                    break;
-                    
-                default:
-                    throw new Exception("Type de destinataire invalide.");
+            if (empty($subject) || empty($message)) {
+                throw new Exception("Le sujet et le message sont obligatoires.");
             }
             
-            $stmt->execute();
-            $result = $stmt->get_result();
+            $recipients = [];
             
-            while ($row = $result->fetch_assoc()) {
-                $recipients[] = $row['email'];
-            }
-            
-            $stmt->close();
-            $conn->close();
-            
-            if (empty($recipients)) {
-                throw new Exception("Aucun destinataire trouvé pour le type sélectionné.");
-            }
-        }
-        
-        $valid_recipients = [];
-        foreach ($recipients as $email) {
-            if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                $valid_recipients[] = $email;
-            }
-        }
-        
-        if (empty($valid_recipients)) {
-            throw new Exception("Aucune adresse email valide trouvée.");
-        }
-        
-        $mail = new PHPMailer(true);
-        
-        try {
-            $mail->isSMTP();
-            $mail->Host = 'smtp.gmail.com';
-            $mail->SMTPAuth = true;
-            $mail->Username = 'xassil7@gmail.com';
-            $mail->Password = 'ehow xvqr vkyd zmrh';
-            $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-            $mail->Port = 587;
-            
-            $mail->setFrom('xassil7@gmail.com', 'ClubConnect');
-            $mail->addReplyTo('xassil7@gmail.com', 'ClubConnect');
-            
-            foreach ($valid_recipients as $email) {
-                $mail->addBCC($email);
-            }
-            
-            $mail->isHTML(true);
-            $mail->Subject = $subject;
-            $mail->Body = nl2br(htmlspecialchars($message));
-            $mail->AltBody = strip_tags($message);
-            
-            $mail->send();
-            
-            $conn = db_connect();
-            if (!$conn->connect_error) {
+            if ($recipient_type === 'custom' && !empty($recipient)) {
+                $recipients = array_map('trim', explode(',', $recipient));
+            } else {
+                $conn = db_connect();
+                
                 $conn->set_charset("utf8mb4");
                 
-                $sql = "INSERT INTO Email (destinataire, sujet, message, dateEnvoi, idUtilisateur) 
-                        VALUES (?, ?, ?, NOW(), ?)";
+                switch ($recipient_type) {
+                    case 'all-members':
+                        // Get all members of clubs where current user is organizer
+                        $sql = "SELECT DISTINCT u.email 
+                                FROM Utilisateur u 
+                                JOIN Adherence a ON u.idUtilisateur = a.idUtilisateur 
+                                WHERE a.idClub IN (
+                                    SELECT idClub FROM Adherence WHERE idUtilisateur = ? AND position = 'organisateur'
+                                )";
+                        $stmt = $conn->prepare($sql);
+                        $stmt->bind_param("i", $current_user_id);
+                        break;
+                        
+                    case 'event-attendees':
+                        // Get attendees of events from clubs where current user is organizer
+                        $sql = "SELECT DISTINCT u.email 
+                                FROM Utilisateur u 
+                                JOIN Inscription i ON u.idUtilisateur = i.idUtilisateur 
+                                JOIN Evenement e ON i.idEvenement = e.idEvenement 
+                                WHERE e.idClub IN (
+                                    SELECT idClub FROM Adherence WHERE idUtilisateur = ? AND position = 'organisateur'
+                                )";
+                        $stmt = $conn->prepare($sql);
+                        $stmt->bind_param("i", $current_user_id);
+                        break;
+                        
+                    default:
+                        throw new Exception("Type de destinataire invalide.");
+                }
                 
-                $stmt = $conn->prepare($sql);
-                $recipient_list = implode(', ', $valid_recipients);
-                $stmt->bind_param("sssi", $recipient_list, $subject, $message, $user_id);
                 $stmt->execute();
+                $result = $stmt->get_result();
+                
+                while ($row = $result->fetch_assoc()) {
+                    $recipients[] = $row['email'];
+                }
+                
                 $stmt->close();
                 $conn->close();
+                
+                if (empty($recipients)) {
+                    throw new Exception("Aucun destinataire trouvé pour le type sélectionné.");
+                }
             }
             
-            $success_message = "Email envoyé avec succès à " . count($valid_recipients) . " destinataires !";
+            $valid_recipients = [];
+            foreach ($recipients as $email) {
+                if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                    $valid_recipients[] = $email;
+                }
+            }
             
-        } catch (Exception $e) {
-            throw new Exception("L'email n'a pas pu être envoyé. Erreur: " . $mail->ErrorInfo);
-        }
+            if (empty($valid_recipients)) {
+                throw new Exception("Aucune adresse email valide trouvée.");
+            }
+            
+            // Simulate email sending (replace with actual PHPMailer code if needed)
+            $success_message = "Email préparé pour envoi à " . count($valid_recipients) . " destinataires !<br>";
+            $success_message .= "<strong>Sujet:</strong> " . htmlspecialchars($subject) . "<br>";
+            $success_message .= "<strong>Destinataires:</strong> " . implode(', ', $valid_recipients) . "<br>";
+            $success_message .= "<strong>Message:</strong> " . nl2br(htmlspecialchars($message));
+            
+            // In a real implementation, you would use PHPMailer here
+            // $mail = new PHPMailer(true);
+            // ... email sending code ...
         }
 
     } catch (Exception $e) {
@@ -194,35 +221,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 function getFormValue($field) {
     return isset($_POST[$field]) ? htmlspecialchars($_POST[$field]) : '';
 }
-// Load join requests for clubs managed by current user (organisateur)
-$requests = [];
-try {
-    $conn = db_connect();
-    $conn->set_charset('utf8mb4');
-
-    $sql = "SELECT r.idUtilisateur, r.idClub, u.nom, u.prenom, u.apogee, u.email, c.nom AS club_nom
-            FROM requete r
-            JOIN utilisateur u ON u.idUtilisateur = r.idUtilisateur
-            JOIN club c ON c.idClub = r.idClub
-            WHERE r.idClub IN (
-                SELECT idClub FROM adherence WHERE idUtilisateur = ? AND position = 'organisateur'
-            )
-            ORDER BY c.nom ASC, u.nom ASC, u.prenom ASC";
-
-    $stmt = $conn->prepare($sql);
-    if ($stmt) {
-        $stmt->bind_param('i', $user_id);
-        $stmt->execute();
-        $res = $stmt->get_result();
-        while ($row = $res->fetch_assoc()) {
-            $requests[] = $row;
-        }
-        $stmt->close();
-    }
-} catch (Exception $e) {
-    // keep $requests empty on error
-}
 ?>
+
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -667,6 +667,11 @@ try {
             background: rgba(255, 255, 255, 0.2);
         }
 
+        .btn-sm {
+            padding: 0.5rem 0.75rem;
+            font-size: 0.75rem;
+        }
+
         /* Stats Grid */
         .stats-grid {
             display: grid;
@@ -755,6 +760,10 @@ try {
             .stats-grid {
                 grid-template-columns: 1fr;
             }
+
+            .radio-group {
+                flex-direction: column;
+            }
         }
 
         @media (max-width: 640px) {
@@ -783,10 +792,10 @@ try {
     
     <div class="dashboard">
         <aside class="sidebar">
-        <div class="sidebar-header">
+            <div class="sidebar-header">
                 <h1 class="sidebar-title">ClubConnect</h1>
                 <p class="sidebar-subtitle">Tableau de Bord Étudiant</p>
-        </div>
+            </div>
 
             <nav class="sidebar-nav">
                 <a href="home.php" class="nav-item">
@@ -847,11 +856,11 @@ try {
             <div class="sidebar-profile">
                 <div class="profile-card">
                     <div class="profile-avatar">
-                        <span>JS</span>
+                        <span><?php echo $user_initials; ?></span>
                     </div>
                     <div class="profile-info">
-                        <p class="profile-name">Jean Smith</p>
-                        <p class="profile-department">Informatique</p>
+                        <p class="profile-name"><?php echo htmlspecialchars($user_name); ?></p>
+                        <p class="profile-department"><?php echo htmlspecialchars($user_department); ?></p>
                     </div>
                 </div>
             </div>
@@ -859,22 +868,22 @@ try {
 
         <main class="main-content">
             <div class="header">
-                    <div class="header-content">
-                        <div class="header-text">
-                            <h2 class="header-title">Communications</h2>
-                            <p class="header-subtitle">Envoyer des emails et gérer les requêtes d'adhésion</p>
-                        </div>
+                <div class="header-content">
+                    <div class="header-text">
+                        <h2 class="header-title">Communications</h2>
+                        <p class="header-subtitle">Envoyer des emails et gérer les requêtes d'adhésion</p>
                     </div>
+                </div>
             </div>
 
             <?php if ($success_message): ?>
-                    <div class="success-message">
-                    <?php echo htmlspecialchars($success_message); ?>
+                <div class="success-message">
+                    <?php echo $success_message; ?>
                 </div>
             <?php endif; ?>
             
             <?php if ($error_message): ?>
-                    <div class="error-message">
+                <div class="error-message">
                     <?php echo htmlspecialchars($error_message); ?>
                 </div>
             <?php endif; ?>
@@ -882,78 +891,78 @@ try {
             <div class="content-container">
                 <div class="tabs-list">
                     <button class="tab-trigger active" onclick="switchTab('email')">Email</button>
-                    <button class="tab-trigger" onclick="switchTab('requetes')">Requêtes</button>
+                    <button class="tab-trigger" onclick="switchTab('requetes')">Requêtes d'Adhésion (<?php echo count($requests); ?>)</button>
                 </div>
 
                 <!-- Email Tab -->
                 <div id="tab-email" class="tab-content active">
-                <form method="POST" class="card">
-                    <div class="form-group">
-                        <label for="recipient">À</label>
-                        <input 
-                            type="text" 
-                            id="recipient" 
-                            name="recipient"
-                            placeholder="Entrez les adresses email (séparées par des virgules)"
-                            value="<?php echo getFormValue('recipient'); ?>"
-                        >
-                    </div>
-
-                    <div class="form-group">
-                        <label>Envoyer à</label>
-                        <div class="radio-group">
-                            <label class="radio-label">
-                                <input type="radio" name="recipient-type" value="all-members" class="radio-input"
-                                    <?php echo (getFormValue('recipient-type') === 'all-members') ? 'checked' : ''; ?>>
-                                <span>Tous les Membres du Club</span>
-                            </label>
-                            <label class="radio-label">
-                                <input type="radio" name="recipient-type" value="event-attendees" class="radio-input"
-                                    <?php echo (getFormValue('recipient-type') === 'event-attendees') ? 'checked' : ''; ?>>
-                                <span>Participants aux Événements</span>
-                            </label>
-                            <label class="radio-label">
-                                <input type="radio" name="recipient-type" value="custom" class="radio-input"
-                                    <?php echo (getFormValue('recipient-type') === 'custom' || empty(getFormValue('recipient-type'))) ? 'checked' : ''; ?>>
-                                <span>Destinataires Personnalisés</span>
-                            </label>
+                    <form method="POST" class="card">
+                        <div class="form-group">
+                            <label for="recipient">À</label>
+                            <input 
+                                type="text" 
+                                id="recipient" 
+                                name="recipient"
+                                placeholder="Entrez les adresses email (séparées par des virgules)"
+                                value="<?php echo getFormValue('recipient'); ?>"
+                            >
                         </div>
-                    </div>
 
-                    <div class="form-group">
-                        <label for="subject">Sujet</label>
-                        <input 
-                            type="text" 
-                            id="subject" 
-                            name="subject"
-                            placeholder="Entrez le sujet de l'email"
-                            value="<?php echo getFormValue('subject'); ?>"
-                            required
-                        >
-                    </div>
+                        <div class="form-group">
+                            <label>Envoyer à</label>
+                            <div class="radio-group">
+                                <label class="radio-label">
+                                    <input type="radio" name="recipient-type" value="all-members" class="radio-input"
+                                        <?php echo (getFormValue('recipient-type') === 'all-members') ? 'checked' : ''; ?>>
+                                    <span>Tous les Membres de Mes Clubs</span>
+                                </label>
+                                <label class="radio-label">
+                                    <input type="radio" name="recipient-type" value="event-attendees" class="radio-input"
+                                        <?php echo (getFormValue('recipient-type') === 'event-attendees') ? 'checked' : ''; ?>>
+                                    <span>Participants aux Événements de Mes Clubs</span>
+                                </label>
+                                <label class="radio-label">
+                                    <input type="radio" name="recipient-type" value="custom" class="radio-input"
+                                        <?php echo (getFormValue('recipient-type') === 'custom' || empty(getFormValue('recipient-type'))) ? 'checked' : ''; ?>>
+                                    <span>Destinataires Personnalisés</span>
+                                </label>
+                            </div>
+                        </div>
 
-                    <div class="form-group">
-                        <label for="message">Message</label>
-                        <textarea 
-                            id="message" 
-                            name="message"
-                            placeholder="Composez votre message..."
-                            required
-                        ><?php echo getFormValue('message'); ?></textarea>
-                    </div>
+                        <div class="form-group">
+                            <label for="subject">Sujet</label>
+                            <input 
+                                type="text" 
+                                id="subject" 
+                                name="subject"
+                                placeholder="Entrez le sujet de l'email"
+                                value="<?php echo getFormValue('subject'); ?>"
+                                required
+                            >
+                        </div>
 
-                    <div class="button-group">
-                        <button type="submit" class="btn">Envoyer l'Email</button>
-                        <a href="home.php" class="btn btn-secondary">Retour</a>
-                    </div>
-                </form>
+                        <div class="form-group">
+                            <label for="message">Message</label>
+                            <textarea 
+                                id="message" 
+                                name="message"
+                                placeholder="Composez votre message..."
+                                required
+                            ><?php echo getFormValue('message'); ?></textarea>
+                        </div>
+
+                        <div class="button-group">
+                            <button type="submit" class="btn">Envoyer l'Email</button>
+                            <a href="home.php" class="btn btn-secondary">Retour</a>
+                        </div>
+                    </form>
                 </div>
 
                 <!-- Requêtes Tab -->
                 <div id="tab-requetes" class="tab-content">
                     <div class="card">
                         <?php if (empty($requests)) { ?>
-                            <div class="muted">Aucune requête d'adhésion trouvée pour vos clubs.</div>
+                            <div class="muted">Aucune requête d'adhésion en attente pour vos clubs.</div>
                         <?php } else { ?>
                             <div style="overflow-x:auto;">
                                 <table class="table">
@@ -981,13 +990,13 @@ try {
                                                             <input type="hidden" name="request_action" value="approve" />
                                                             <input type="hidden" name="req_user_id" value="<?php echo (int)$rq['idUtilisateur']; ?>" />
                                                             <input type="hidden" name="req_club_id" value="<?php echo (int)$rq['idClub']; ?>" />
-                                                            <button type="submit" class="btn" style="padding:0.5rem 0.75rem;">Approuver</button>
+                                                            <button type="submit" class="btn btn-sm">Approuver</button>
                                                         </form>
                                                         <form method="POST" onsubmit="return confirm('Rejeter cette requête ?');">
                                                             <input type="hidden" name="request_action" value="reject" />
                                                             <input type="hidden" name="req_user_id" value="<?php echo (int)$rq['idUtilisateur']; ?>" />
                                                             <input type="hidden" name="req_club_id" value="<?php echo (int)$rq['idClub']; ?>" />
-                                                            <button type="submit" class="btn btn-secondary" style="padding:0.5rem 0.75rem;">Rejeter</button>
+                                                            <button type="submit" class="btn btn-secondary btn-sm">Rejeter</button>
                                                         </form>
                                                     </div>
                                                 </td>
@@ -1010,6 +1019,7 @@ try {
             document.querySelector(`[onclick="switchTab('${tab}')"]`).classList.add('active');
             document.getElementById(`tab-${tab}`).classList.add('active');
         }
+
         document.addEventListener('DOMContentLoaded', function() {
             const recipientInput = document.getElementById('recipient');
             const radioButtons = document.querySelectorAll('input[name="recipient-type"]');

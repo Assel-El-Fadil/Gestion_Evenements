@@ -1,32 +1,33 @@
 <?php
-
 session_start();
 require_once '../database.php';
 
-$user_id = $_SESSION['user_id'] ?? 1;
+// Vérifier si l'utilisateur est connecté
+if (!isset($_SESSION["user_id"])) {
+    header("Location: ../signin.php");
+    exit();
+}
+
+$user_id = $_SESSION['user_id'];
 
 $conn = db_connect();
 
-$user = null;
-$initials = "JS"; 
-$success_message = '';
-$error_message = '';
+// Récupérer les informations de l'utilisateur
+$user_sql = "SELECT nom, prenom, annee, filiere FROM utilisateur WHERE idUtilisateur = ?";
+$stmt = $conn->prepare($user_sql);
+$stmt->bind_param("i", $user_id);
+$stmt->execute();
+$result = $stmt->get_result();
+$user = $result->fetch_assoc();
 
-if ($user_id) {
-    $user_sql = "SELECT nom, prenom, filiere FROM utilisateur WHERE idUtilisateur = ?";
-    $stmt = $conn->prepare($user_sql);
-    $stmt->bind_param("i", $user_id);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    
-    if ($result->num_rows > 0) {
-        $user = $result->fetch_assoc();
-        $first_initial = substr($user['prenom'], 0, 1);
-        $last_initial = substr($user['nom'], 0, 1);
-        $initials = strtoupper($first_initial . $last_initial);
-    }
-    $stmt->close();
+if (!$user) {
+    header("Location: ../signin.php");
+    exit();
 }
+
+$user_name = $user['prenom'] . ' ' . $user['nom'];
+$user_initials = strtoupper(substr($user['prenom'], 0, 1) . substr($user['nom'], 0, 1));
+$user_department = $user['annee'] . ' - ' . $user['filiere'];
 
 $stats = [];
 $search_query = trim($_GET['q'] ?? '');
@@ -134,7 +135,7 @@ db_close();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ClubConnect - Découvrir les Événements</title>
-    <style>
+     <style>
         * {
             margin: 0;
             padding: 0;
@@ -760,11 +761,12 @@ db_close();
         .profile-name { color: #ffffff; font-weight: 500; font-size: 1rem; line-height: 1.5; }
         .profile-department { color: #9ca3af; font-size: 0.875rem; line-height: 1.5; }
     </style>
-    </head>
-    <body>
-        <div class="bg-gradient"></div>
-        <div class="orb orb-1"></div>
-        <div class="orb orb-2"></div>
+</head>
+<body>
+    <div class="bg-gradient"></div>
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    
     <div class="container">
         <div class="sidebar">
             <div class="sidebar-header">
@@ -831,11 +833,11 @@ db_close();
             <div class="sidebar-profile">
                 <div class="profile-card">
                     <div class="profile-avatar">
-                        <span>JS</span>
+                        <span><?php echo $user_initials; ?></span>
                     </div>
                     <div class="profile-info">
-                        <p class="profile-name">Jean Smith</p>
-                        <p class="profile-department">Informatique</p>
+                        <p class="profile-name"><?php echo htmlspecialchars($user_name); ?></p>
+                        <p class="profile-department"><?php echo htmlspecialchars($user_department); ?></p>
                     </div>
                 </div>
             </div>

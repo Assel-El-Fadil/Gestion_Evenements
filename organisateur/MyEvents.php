@@ -2,14 +2,38 @@
 session_start();
 require_once '../database.php';
 
+// Vérifier si l'utilisateur est connecté
+if (!isset($_SESSION["user_id"])) {
+    header("Location: ../signin.php");
+    exit();
+}
+
 // Get user ID from session
 $user_id = $_SESSION['user_id'] ?? 1;
 $search_query = trim($_GET['q'] ?? '');
 
-if (!$user_id) {
-    header("Location: ../index.php");
+
+
+
+$user_id = $_SESSION['user_id'];
+
+// Récupérer les informations de l'utilisateur
+$conn = db_connect();
+$user_sql = "SELECT nom, prenom, annee, filiere FROM utilisateur WHERE idUtilisateur = ?";
+$stmt_user = $conn->prepare($user_sql);
+$stmt_user->bind_param("i", $user_id);
+$stmt_user->execute();
+$result_user = $stmt_user->get_result();
+$user = $result_user->fetch_assoc();
+
+if (!$user) {
+    header("Location: ../signin.php");
     exit();
 }
+
+$user_name = $user['prenom'] . ' ' . $user['nom'];
+$user_initials = strtoupper(substr($user['prenom'], 0, 1) . substr($user['nom'], 0, 1));
+$user_department = $user['annee'] . ' - ' . $user['filiere'];
 
 // Fetch events from database
 try {
@@ -88,7 +112,10 @@ try {
         $events[] = $event;
     }
     
-    // $events contains only the user's events; counters above are global
+    // Compteurs pour l'utilisateur connecté
+    $total_count = count($events);
+    $upcoming_count = count(array_filter($events, function($e) { return $e['is_upcoming']; }));
+    $past_count = $total_count - $upcoming_count;
     
     $stmt->close();
     db_close();
@@ -805,11 +832,11 @@ if (isset($_GET['event_id'])) {
             <div class="sidebar-profile">
                 <div class="profile-card">
                     <div class="profile-avatar">
-                        <span>JS</span>
+                        <span><?php echo $user_initials; ?></span>
                     </div>
                     <div class="profile-info">
-                        <p class="profile-name">Jean Smith</p>
-                        <p class="profile-department">Informatique</p>
+                        <p class="profile-name"><?php echo htmlspecialchars($user_name); ?></p>
+                        <p class="profile-department"><?php echo htmlspecialchars($user_department); ?></p>
                     </div>
                 </div>
             </div>
