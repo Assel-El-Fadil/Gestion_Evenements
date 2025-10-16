@@ -17,25 +17,57 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $lieu = $conn->real_escape_string($_POST['event_location'] ?? '');
         $capacite = intval($_POST['event_capacity'] ?? 0);
         $categorie = $conn->real_escape_string($_POST['event_category'] ?? '');
-        $idClub = 1;
+        $idClub = intval($_POST['event_club'] ?? 1);
         
         if (empty($titre) || empty($description) || empty($date) || empty($lieu) || empty($categorie)) {
             throw new Exception("Veuillez remplir tous les champs obligatoires.");
         }
         
-        $sql = "INSERT INTO evenement(titre, description, capacité, date, lieu, photo, statut, nbrParticipants, idClub, categorie) 
-                VALUES (?, ?, ?, ?, ?, '', 'upcoming', 0, ?, ?)";
+        // Handle image upload
+        $photo_path = '';
+        if (isset($_FILES['event_photo']) && $_FILES['event_photo']['error'] === UPLOAD_ERR_OK) {
+            $upload_dir = '../images/';
+            if (!is_dir($upload_dir)) {
+                mkdir($upload_dir, 0755, true);
+            }
+            
+            $file_extension = strtolower(pathinfo($_FILES['event_photo']['name'], PATHINFO_EXTENSION));
+            $allowed_extensions = ['jpg', 'jpeg', 'png', 'gif'];
+            
+            if (!in_array($file_extension, $allowed_extensions)) {
+                throw new Exception("Format d'image non supporté. Utilisez JPG, PNG ou GIF.");
+            }
+            
+            $file_size = $_FILES['event_photo']['size'];
+            if ($file_size > 10 * 1024 * 1024) { // 10MB limit
+                throw new Exception("L'image est trop volumineuse. Taille maximale: 10MB.");
+            }
+            
+            // Generate unique filename
+            $unique_filename = 'event_' . time() . '_' . uniqid() . '.' . $file_extension;
+            $upload_path = $upload_dir . $unique_filename;
+            
+            if (move_uploaded_file($_FILES['event_photo']['tmp_name'], $upload_path)) {
+                $photo_path = 'images/' . $unique_filename;
+            } else {
+                throw new Exception("Erreur lors du téléchargement de l'image.");
+            }
+        }
+        
+        $sql = "INSERT INTO evenement(titre, description, capacité, date, lieu, photo, statut, nbrParticipants, idClub) 
+                VALUES (?, ?, ?, ?, ?, ?, 'upcoming', 0, ?)";
         
         $stmt = $conn->prepare($sql);
         if (!$stmt) {
             throw new Exception("Erreur de préparation de la requête: " . $conn->error);
         }
         
-        $stmt->bind_param("ssisiss", $titre, $description, $capacite, $date, $lieu, $idClub, $categorie);
+        $stmt->bind_param("ssisssi", $titre, $description, $capacite, $date, $lieu, $photo_path, $idClub);
         
         if ($stmt->execute()) {
             $success_message = "Événement créé avec succès !";
             $_POST = array();
+            $_FILES = array();
         } else {
             throw new Exception("Erreur lors de la création de l'événement: " . $stmt->error);
         }
@@ -499,7 +531,7 @@ function getFormattedDate($dateField) {
 
         .file-preview img {
             max-width: 100%;
-            max-height: 200px;
+            max-height: 150px;
             border-radius: 0.5rem;
         }
 
@@ -669,16 +701,16 @@ function getFormattedDate($dateField) {
     </style>
 </head>
 <body>
-    <div class="bg-gradient"></div>
+        <div class="bg-gradient"></div>
     <div class="orb orb-1"></div>
     <div class="orb orb-2"></div>
-    
+        
     <div class="dashboard">
-        <aside class="sidebar">
+            <aside class="sidebar">
             <div class="sidebar-header">
                 <h1 class="sidebar-title">ClubConnect</h1>
                 <p class="sidebar-subtitle">Tableau de Bord Étudiant</p>
-            </div>
+                </div>
 
             <nav class="sidebar-nav">
                     <a href="home.php" class="nav-item">
@@ -745,10 +777,10 @@ function getFormattedDate($dateField) {
                         <p class="profile-name">Jean Smith</p>
                         <p class="profile-department">Informatique</p>
                     </div>
+                    </div>
                 </div>
-            </div>
             </aside>
-        <main class="main-content">
+            <main class="main-content">
             <div class="content-container">
                 <div class="header">
                     <div class="header-content">
@@ -757,157 +789,156 @@ function getFormattedDate($dateField) {
                             <p class="header-subtitle">Remplissez les détails ci-dessous pour créer votre événement</p>
                         </div>
                     </div>
-                </div>
+                    </div>
 
-                <?php if ($success_message): ?>
+                    <?php if ($success_message): ?>
                     <div class="success-message">
-                        <?php echo htmlspecialchars($success_message); ?>
-                    </div>
-                <?php endif; ?>
-                
-                <?php if ($error_message): ?>
+                            <?php echo htmlspecialchars($success_message); ?>
+                        </div>
+                    <?php endif; ?>
+                    
+                    <?php if ($error_message): ?>
                     <div class="error-message">
-                        <?php echo htmlspecialchars($error_message); ?>
-                    </div>
-                <?php endif; ?>
+                            <?php echo htmlspecialchars($error_message); ?>
+                        </div>
+                    <?php endif; ?>
 
-                <form method="POST" enctype="multipart/form-data" class="form-grid">
-                    <div class="form-fields">
-                        <div class="form-card">
+                    <form method="POST" enctype="multipart/form-data" class="form-grid">
+                        <div class="form-fields">
+                            <div class="form-card">
                             <label>Titre de l'Événement *</label>
                             <input type="text" name="event_title" placeholder="Entrez le titre de l'événement" 
-                                   value="<?php echo getFormValue('event_title'); ?>" required>
-                        </div>
+                                       value="<?php echo getFormValue('event_title'); ?>" required>
+                            </div>
 
-                        <div class="form-card">
+                            <div class="form-card">
                             <label>Description de l'Événement *</label>
                             <textarea name="event_description" rows="5" 
-                                      placeholder="Décrivez votre événement en détail..." required><?php echo getFormValue('event_description'); ?></textarea>
-                        </div>
+                                          placeholder="Décrivez votre événement en détail..." required><?php echo getFormValue('event_description'); ?></textarea>
+                            </div>
 
-                        <div class="form-card">
+                            <div class="form-card">
                             <label>Date de l'Événement *</label>
                             <input type="date" name="event_date" 
-                                   value="<?php echo getFormValue('event_date'); ?>" required>
-                        </div>
+                                       value="<?php echo getFormValue('event_date'); ?>" required>
+                            </div>
 
-                        <div class="form-card">
+                            <div class="form-card">
                             <label>Lieu *</label>
                             <input type="text" name="event_location" placeholder="Entrez le lieu ou le numéro de salle"
-                                   value="<?php echo getFormValue('event_location'); ?>" required>
-                        </div>
+                                       value="<?php echo getFormValue('event_location'); ?>" required>
+                            </div>
 
-                        <div class="form-row">
+                            <div class="form-row">
                             <div class="form-group">
                                 <label>Capacité Maximale</label>
                                 <input type="number" name="event_capacity" placeholder="50"
-                                       value="<?php echo getFormValue('event_capacity'); ?>">
-                            </div>
+                                           value="<?php echo getFormValue('event_capacity'); ?>">
+                                </div>
                             <div class="form-group">
                                 <label>Catégorie *</label>
                                 <select name="event_category" required>
-                                    <option value="">Sélectionnez une catégorie</option>
-                                    <option value="workshop" <?php echo (getFormValue('event_category') === 'workshop') ? 'selected' : ''; ?>>Atelier</option>
-                                    <option value="seminar" <?php echo (getFormValue('event_category') === 'seminar') ? 'selected' : ''; ?>>Séminaire</option>
-                                    <option value="networking" <?php echo (getFormValue('event_category') === 'networking') ? 'selected' : ''; ?>>Réseautage</option>
-                                    <option value="social" <?php echo (getFormValue('event_category') === 'social') ? 'selected' : ''; ?>>Social</option>
-                                    <option value="competition" <?php echo (getFormValue('event_category') === 'competition') ? 'selected' : ''; ?>>Compétition</option>
-                                    <option value="meeting" <?php echo (getFormValue('event_category') === 'meeting') ? 'selected' : ''; ?>>Réunion</option>
-                                </select>
+                                        <option value="">Sélectionnez une catégorie</option>
+                                        <option value="workshop" <?php echo (getFormValue('event_category') === 'workshop') ? 'selected' : ''; ?>>Atelier</option>
+                                        <option value="seminar" <?php echo (getFormValue('event_category') === 'seminar') ? 'selected' : ''; ?>>Séminaire</option>
+                                        <option value="networking" <?php echo (getFormValue('event_category') === 'networking') ? 'selected' : ''; ?>>Réseautage</option>
+                                        <option value="social" <?php echo (getFormValue('event_category') === 'social') ? 'selected' : ''; ?>>Social</option>
+                                        <option value="competition" <?php echo (getFormValue('event_category') === 'competition') ? 'selected' : ''; ?>>Compétition</option>
+                                        <option value="meeting" <?php echo (getFormValue('event_category') === 'meeting') ? 'selected' : ''; ?>>Réunion</option>
+                                    </select>
+                                </div>
                             </div>
-                        </div>
 
-                        <div class="form-card">
+                            <div class="form-card">
                             <label>Club Organisateur *</label>
                             <select name="event_club" required>
-                                <option value="">Sélectionnez un club</option>
-                                <?php 
-                                $clubs = get_user_clubs(1, 10);
-                                foreach ($clubs as $club): ?>
-                                    <option value="<?php echo $club['idClub']; ?>" 
-                                            <?php echo (getFormValue('event_club') == $club['idClub']) ? 'selected' : ''; ?>>
-                                        <?php echo htmlspecialchars($club['nom']); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-
-                        <div class="form-card">
-                            <label>Image de l'Événement</label>
-                            <div class="file-upload">
-                                <svg class="upload-icon" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-                                    <circle cx="12" cy="13" r="4"/>
-                                </svg>
-                                <p class="upload-text">Glissez-déposez une image ici, ou cliquez pour parcourir</p>
-                                <p class="upload-subtext">PNG, JPG, GIF jusqu'à 10MB</p>
-                                <input type="file" name="event_photo" id="event_photo" accept="image/*" style="display: none;">
-                                <button type="button" class="upload-button" onclick="document.getElementById('event_photo').click()">Choisir un Fichier</button>
-                                
-                                <div class="file-preview" id="file-preview"></div>
+                                    <option value="">Sélectionnez un club</option>
+                                    <?php 
+                                    $clubs = get_user_clubs(1, 10);
+                                    foreach ($clubs as $club): ?>
+                                        <option value="<?php echo $club['idClub']; ?>" 
+                                                <?php echo (getFormValue('event_club') == $club['idClub']) ? 'selected' : ''; ?>>
+                                            <?php echo htmlspecialchars($club['nom']); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
                             </div>
-                        </div>
-                        </div>
 
-                    <div class="preview-column">
-                        <div class="preview-card">
-                            <h3 class="preview-title">Aperçu de l'Événement</h3>
-                            <div class="preview-content">
-                                <div class="preview-image" id="preview-image-container">
-                                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <div class="form-card">
+                            <label>Image de l'Événement</label>
+                                <div class="file-upload" onclick="document.getElementById('event_photo').click()">
+                                    <svg class="upload-icon" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
                                         <circle cx="12" cy="13" r="4"/>
                                     </svg>
-                                </div>
-                                <div class="preview-text">
-                                    <h4 class="preview-event-title"><?php echo getFormValue('event_title') ?: 'Titre de l\'événement ici'; ?></h4>
-                                    <p class="preview-event-desc"><?php echo getFormValue('event_description') ?: 'La description de l\'événement apparaîtra ici...'; ?></p>
-                                </div>
-                                <div class="preview-details">
-                                    <div class="preview-detail-item">
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                                            <line x1="16" y1="2" x2="16" y2="6"/>
-                                            <line x1="8" y1="2" x2="8" y2="6"/>
-                                            <line x1="3" y1="10" x2="21" y2="10"/>
-                                        </svg>
-                                        <span><?php echo getFormattedDate('event_date'); ?></span>
-                                    </div>
-                                    <div class="preview-detail-item">
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                            <circle cx="12" cy="12" r="10"/>
-                                            <polyline points="12 6 12 12 16 14"/>
-                                        </svg>
-                                        <span>Toute la journée</span>
-                                    </div>
-                                    <div class="preview-detail-item">
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-                                            <circle cx="12" cy="10" r="3"/>
-                                        </svg>
-                                        <span><?php echo getFormValue('event_location') ?: 'Entrez le lieu'; ?></span>
-                                    </div>
-                                    <div class="preview-detail-item">
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
-                                            <circle cx="9" cy="7" r="4"/>
-                                            <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
-                                            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-                                        </svg>
-                                        <span>0 / <?php echo isset($_POST['event_capacity']) ? intval($_POST['event_capacity']) : 0; ?> participants</span>
-                                    </div>
+                                    <p class="upload-text">Glissez-déposez une image ici, ou cliquez pour parcourir</p>
+                                    <p class="upload-subtext">PNG, JPG, GIF jusqu'à 10MB</p>
+                                <input type="file" name="event_photo" id="event_photo" accept="image/*" style="display: none;">
+                                    
+                                    <div class="file-preview" id="file-preview"></div>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="button-group">
+                        <div class="preview-column">
+                            <div class="preview-card">
+                                <h3 class="preview-title">Aperçu de l'Événement</h3>
+                                <div class="preview-content">
+                                    <div class="preview-image" id="preview-image-container">
+                                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                                            <circle cx="12" cy="13" r="4"/>
+                                        </svg>
+                                    </div>
+                                    <div class="preview-text">
+                                        <h4 class="preview-event-title"><?php echo getFormValue('event_title') ?: 'Titre de l\'événement ici'; ?></h4>
+                                        <p class="preview-event-desc"><?php echo getFormValue('event_description') ?: 'La description de l\'événement apparaîtra ici...'; ?></p>
+                                    </div>
+                                    <div class="preview-details">
+                                        <div class="preview-detail-item">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                                                <line x1="16" y1="2" x2="16" y2="6"/>
+                                                <line x1="8" y1="2" x2="8" y2="6"/>
+                                                <line x1="3" y1="10" x2="21" y2="10"/>
+                                            </svg>
+                                            <span><?php echo getFormattedDate('event_date'); ?></span>
+                                        </div>
+                                        <div class="preview-detail-item">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <circle cx="12" cy="12" r="10"/>
+                                                <polyline points="12 6 12 12 16 14"/>
+                                            </svg>
+                                            <span>Toute la journée</span>
+                                        </div>
+                                        <div class="preview-detail-item">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                                                <circle cx="12" cy="10" r="3"/>
+                                            </svg>
+                                            <span><?php echo getFormValue('event_location') ?: 'Entrez le lieu'; ?></span>
+                                        </div>
+                                        <div class="preview-detail-item">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                                                <circle cx="9" cy="7" r="4"/>
+                                                <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+                                                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                                            </svg>
+                                            <span>0 / <?php echo isset($_POST['event_capacity']) ? intval($_POST['event_capacity']) : 0; ?> participants</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="button-group">
                             <button type="submit" class="btn">Créer l'Événement</button>
                             <a href="home.php" class="btn btn-outline">Annuler</a>
+                            </div>
                         </div>
-                    </div>
-                </form>
-            </div>
-        </main>
+                    </form>
+                </div>
+            </main>
     </div>
 
     <script>
@@ -927,13 +958,13 @@ function getFormattedDate($dateField) {
                     reader.onload = function(e) {
                         const filePreview = document.getElementById('file-preview');
                         filePreview.innerHTML = `
-                            <img src="${e.target.result}" alt="Aperçu">
-                            <div class="file-name">${file.name}</div>
+                            <img src="${e.target.result}" alt="Aperçu" style="max-width: 100%; max-height: 150px; border-radius: 8px; margin-bottom: 8px;">
+                            <div style="color: #9ca3af; font-size: 0.875rem;">${file.name}</div>
                         `;
+                        filePreview.style.display = 'block';
                         
                         const previewContainer = document.getElementById('preview-image-container');
                         previewContainer.innerHTML = `
-                            <div class="preview-image-shine"></div>
                             <img src="${e.target.result}" alt="Aperçu de l'événement" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;">
                         `;
                     };
