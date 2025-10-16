@@ -40,8 +40,8 @@ function get_upcoming_events($limit = 5) {
     $sql = "SELECT e.*, c.nom as club_nom 
             FROM Evenement e 
             JOIN Club c ON e.idClub = c.idClub 
-            WHERE e.date >= CURDATE() 
-            ORDER BY e.date ASC 
+            WHERE e.dateEvenement >= CURDATE() 
+            ORDER BY e.dateEvenement ASC 
             LIMIT ?";
     
     $stmt = $conn->prepare($sql);
