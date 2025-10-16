@@ -15,7 +15,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $mdp = password_hash($_POST['password'], PASSWORD_BCRYPT);
     $role = "utilisateur";
 
-    $check = $conn->prepare("SELECT idUtilisateur FROM utilisateur WHERE email = ? OR apogee = ?");
+    $check = $conn->prepare("SELECT idUtilisateur FROM Utilisateur WHERE email = ? OR apogee = ?");
     $check->bind_param("ss", $email, $apogee);
     $check->execute();
     $result = $check->get_result();
@@ -29,7 +29,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $check->close();
 
     $stmt = $conn->prepare("
-        INSERT INTO utilisateur (nom, prenom, dateNaissance, annee, filiere, email, mdp, apogee, role)
+        INSERT INTO Utilisateur (nom, prenom, dateNaissance, annee, filiere, email, mdp, apogee, role)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     ");
 

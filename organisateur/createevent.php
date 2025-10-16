@@ -54,7 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
         
-        $sql = "INSERT INTO evenement(titre, description, capacité, date, lieu, photo, statut, nbrParticipants, idClub) 
+        $sql = "INSERT INTO Evenement(titre, description, capacite, date, lieu, photo, statut, nbrParticipants, idClub) 
                 VALUES (?, ?, ?, ?, ?, ?, 'upcoming', 0, ?)";
         
         $stmt = $conn->prepare($sql);

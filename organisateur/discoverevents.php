@@ -11,7 +11,7 @@ $user = null;
 $initials = "JS"; 
 
 if ($user_id) {
-    $user_sql = "SELECT nom, prenom, filiere FROM utilisateur WHERE idUtilisateur = ?";
+    $user_sql = "SELECT nom, prenom, filiere FROM Utilisateur WHERE idUtilisateur = ?";
     $stmt = $conn->prepare($user_sql);
     $stmt->bind_param("i", $user_id);
     $stmt->execute();

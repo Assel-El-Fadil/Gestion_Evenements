@@ -32,8 +32,8 @@ try {
 
     // Load ALL events to populate the bottom lists
     $sql = "SELECT e.*, c.nom as club_nom 
-            FROM evenement e 
-            LEFT JOIN club c ON e.idClub = c.idClub 
+            FROM Evenement e 
+            LEFT JOIN Club c ON e.idClub = c.idClub 
             ORDER BY e.date ASC";
     
     $stmt = $conn->prepare($sql);
@@ -70,7 +70,7 @@ try {
 function getEventDetails($event_id) {
     try {
         $conn = db_connect();
-        $stmt = $conn->prepare("SELECT e.*, c.nom as club_nom FROM evenement e LEFT JOIN club c ON e.idClub = c.idClub WHERE e.idEvenement = ?");
+        $stmt = $conn->prepare("SELECT e.*, c.nom as club_nom FROM Evenement e LEFT JOIN Club c ON e.idClub = c.idClub WHERE e.idEvenement = ?");
         $stmt->bind_param('i', $event_id);
         $stmt->execute();
         $result = $stmt->get_result();

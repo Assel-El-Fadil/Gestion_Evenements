@@ -54,8 +54,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($verification_success) {
             $_SESSION['recaptcha_ok'] = true;
-            // DESTROY SESSION BEFORE REDIRECTING to prevent loops
-            session_destroy();
             header('Location: signin.php');
             exit();
         } else {

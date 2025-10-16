@@ -24,7 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $conn->set_charset('utf8mb4');
 
             // Verify current user is organiser of this club
-            $authStmt = $conn->prepare("SELECT 1 FROM adherence WHERE idUtilisateur = ? AND idClub = ? AND position = 'organisateur' LIMIT 1");
+            $authStmt = $conn->prepare("SELECT 1 FROM Adherence WHERE idUtilisateur = ? AND idClub = ? AND position = 'organisateur' LIMIT 1");
             $authStmt->bind_param('ii', $user_id, $reqClubId);
             $authStmt->execute();
             $isOrganiser = $authStmt->get_result()->num_rows > 0;
@@ -36,21 +36,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if ($action === 'approve') {
                 // Add to adherence if not already present
-                $chkStmt = $conn->prepare("SELECT 1 FROM adherence WHERE idUtilisateur = ? AND idClub = ? LIMIT 1");
+                $chkStmt = $conn->prepare("SELECT 1 FROM Adherence WHERE idUtilisateur = ? AND idClub = ? LIMIT 1");
                 $chkStmt->bind_param('ii', $reqUserId, $reqClubId);
                 $chkStmt->execute();
                 $alreadyMember = $chkStmt->get_result()->num_rows > 0;
                 $chkStmt->close();
 
                 if (!$alreadyMember) {
-                    $insStmt = $conn->prepare("INSERT INTO adherence (idUtilisateur, idClub, position) VALUES (?, ?, 'membre')");
+                    $insStmt = $conn->prepare("INSERT INTO Adherence (idUtilisateur, idClub, position) VALUES (?, ?, 'membre')");
                     $insStmt->bind_param('ii', $reqUserId, $reqClubId);
                     $insStmt->execute();
                     $insStmt->close();
                 }
 
                 // Remove from requete
-                $delStmt = $conn->prepare("DELETE FROM requete WHERE idUtilisateur = ? AND idClub = ?");
+                $delStmt = $conn->prepare("DELETE FROM Requete WHERE idUtilisateur = ? AND idClub = ?");
                 $delStmt->bind_param('ii', $reqUserId, $reqClubId);
                 $delStmt->execute();
                 $delStmt->close();
@@ -58,7 +58,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $success_message = "Requête approuvée et membre ajouté.";
             } elseif ($action === 'reject') {
                 // Just remove from requete
-                $delStmt = $conn->prepare("DELETE FROM requete WHERE idUtilisateur = ? AND idClub = ?");
+                $delStmt = $conn->prepare("DELETE FROM Requete WHERE idUtilisateur = ? AND idClub = ?");
                 $delStmt->bind_param('ii', $reqUserId, $reqClubId);
                 $delStmt->execute();
                 $delStmt->close();
@@ -91,7 +91,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 case 'all-members':
                     $sql = "SELECT DISTINCT u.email 
                             FROM Utilisateur u 
-                            JOIN Adhérence a ON u.idUtilisateur = a.idUtilisateur 
+                            JOIN Adherence a ON u.idUtilisateur = a.idUtilisateur 
                             WHERE a.idClub = ?";
                     $stmt = $conn->prepare($sql);
                     $club_id = 1;
@@ -102,7 +102,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $sql = "SELECT DISTINCT u.email 
                             FROM Utilisateur u 
                             JOIN Inscription i ON u.idUtilisateur = i.idUtilisateur 
-                            JOIN Événement e ON i.idEvenement = e.idEvenement 
+                            JOIN Evenement e ON i.idEvenement = e.idEvenement 
                             WHERE e.idClub = ?";
                     $stmt = $conn->prepare($sql);
                     $club_id = 1;
@@ -201,11 +201,11 @@ try {
     $conn->set_charset('utf8mb4');
 
     $sql = "SELECT r.idUtilisateur, r.idClub, u.nom, u.prenom, u.apogee, u.email, c.nom AS club_nom
-            FROM requete r
-            JOIN utilisateur u ON u.idUtilisateur = r.idUtilisateur
-            JOIN club c ON c.idClub = r.idClub
+            FROM Requete r
+            JOIN Utilisateur u ON u.idUtilisateur = r.idUtilisateur
+            JOIN Club c ON c.idClub = r.idClub
             WHERE r.idClub IN (
-                SELECT idClub FROM adherence WHERE idUtilisateur = ? AND position = 'organisateur'
+                SELECT idClub FROM Adherence WHERE idUtilisateur = ? AND position = 'organisateur'
             )
             ORDER BY c.nom ASC, u.nom ASC, u.prenom ASC";
 
