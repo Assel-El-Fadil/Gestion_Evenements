@@ -14,29 +14,53 @@ if (!$user_id) {
 try {
     $conn = db_connect();
     
-    // Global counters from evenement table
-    $total_sql = "SELECT COUNT(*) AS total FROM evenement";
-    $total_res = $conn->query($total_sql);
+    // Counters for events where the user is registered
+    $total_sql = "SELECT COUNT(*) AS total
+                  FROM inscription i
+                  JOIN evenement e ON e.idEvenement = i.idEvenement
+                  WHERE i.idUtilisateur = ?";
+    $stmt_cnt = $conn->prepare($total_sql);
+    $stmt_cnt->bind_param('i', $user_id);
+    $stmt_cnt->execute();
+    $total_res = $stmt_cnt->get_result();
     $total_row = $total_res ? $total_res->fetch_assoc() : ['total' => 0];
     $total_count = (int)($total_row['total'] ?? 0);
+    $stmt_cnt->close();
 
-    $upcoming_sql = "SELECT COUNT(*) AS cnt FROM evenement WHERE date >= CURDATE()";
-    $upcoming_res = $conn->query($upcoming_sql);
+    $upcoming_sql = "SELECT COUNT(*) AS cnt
+                     FROM inscription i
+                     JOIN evenement e ON e.idEvenement = i.idEvenement
+                     WHERE i.idUtilisateur = ? AND e.date >= CURDATE()";
+    $stmt_up = $conn->prepare($upcoming_sql);
+    $stmt_up->bind_param('i', $user_id);
+    $stmt_up->execute();
+    $upcoming_res = $stmt_up->get_result();
     $upcoming_row = $upcoming_res ? $upcoming_res->fetch_assoc() : ['cnt' => 0];
     $upcoming_count = (int)($upcoming_row['cnt'] ?? 0);
+    $stmt_up->close();
 
-    $past_sql = "SELECT COUNT(*) AS cnt FROM evenement WHERE date < CURDATE()";
-    $past_res = $conn->query($past_sql);
+    $past_sql = "SELECT COUNT(*) AS cnt
+                 FROM inscription i
+                 JOIN evenement e ON e.idEvenement = i.idEvenement
+                 WHERE i.idUtilisateur = ? AND e.date < CURDATE()";
+    $stmt_ps = $conn->prepare($past_sql);
+    $stmt_ps->bind_param('i', $user_id);
+    $stmt_ps->execute();
+    $past_res = $stmt_ps->get_result();
     $past_row = $past_res ? $past_res->fetch_assoc() : ['cnt' => 0];
     $past_count = (int)($past_row['cnt'] ?? 0);
+    $stmt_ps->close();
 
-    // Load ALL events to populate the bottom lists
-    $sql = "SELECT e.*, c.nom as club_nom 
-            FROM evenement e 
-            LEFT JOIN club c ON e.idClub = c.idClub 
+    // Load only events the user is registered for
+    $sql = "SELECT e.*, c.nom as club_nom
+            FROM inscription i
+            JOIN evenement e ON e.idEvenement = i.idEvenement
+            LEFT JOIN club c ON e.idClub = c.idClub
+            WHERE i.idUtilisateur = ?
             ORDER BY e.date ASC";
     
     $stmt = $conn->prepare($sql);
+    $stmt->bind_param('i', $user_id);
     $stmt->execute();
     $result = $stmt->get_result();
     
