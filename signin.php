@@ -2,11 +2,6 @@
 
 require "database.php";
 
-// Gate access behind a successful reCAPTCHA challenge
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-
 db_connect();
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
@@ -29,9 +24,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 $_SESSION["user_id"] = $idUtilisateur;
                 $_SESSION["user_role"] = $role;
                 $_SESSION["user_name"] = $nom . " " . $prenom;
-                if (isset($_SESSION['recaptcha_ok'])) {
-                    unset($_SESSION['recaptcha_ok']);
-                }
 
                 // Redirect based on user role
                 switch($role) {
@@ -76,6 +68,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #000000;
+            color: #ffffff;
             min-height: 100vh;
             display: flex;
             align-items: center;
@@ -83,6 +77,48 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             padding: 1rem;
             position: relative;
             overflow: hidden;
+        }
+
+        /* Background layers */
+        .bg-gradient {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to bottom right, #000000, rgba(17, 24, 39, 0.5), #000000);
+            z-index: 0;
+        }
+
+        /* Animated orbs */
+        .orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(96px);
+            animation: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        .orb-1 {
+            top: 25%;
+            left: 25%;
+            width: 384px;
+            height: 384px;
+            background-color: rgba(59, 130, 246, 0.1);
+        }
+
+        .orb-2 {
+            bottom: 25%;
+            right: 25%;
+            width: 384px;
+            height: 384px;
+            background-color: rgba(168, 85, 247, 0.1);
+            animation-delay: 1s;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
         }
 
         .login-card {
