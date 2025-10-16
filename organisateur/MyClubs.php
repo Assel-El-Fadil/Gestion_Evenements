@@ -23,7 +23,7 @@ $user_id = $_SESSION['user_id'];
 
 // Récupérer les informations de l'utilisateur
 $conn = db_connect();
-$user_sql = "SELECT nom, prenom, annee, filiere FROM utilisateur WHERE idUtilisateur = ?";
+$user_sql = "SELECT nom, prenom, annee, filiere FROM Utilisateur WHERE idUtilisateur = ?";
 $stmt_user = $conn->prepare($user_sql);
 $stmt_user->bind_param("i", $user_id);
 $stmt_user->execute();
@@ -89,9 +89,9 @@ try {
 
     // 2) List clubs (optionally filtered) with user's role and event count
     $sql = "SELECT c.*, a.position, COUNT(e.idEvenement) AS event_count
-            FROM club c
-            LEFT JOIN adherence a ON a.idClub = c.idClub AND a.idUtilisateur = ?
-            LEFT JOIN evenement e ON e.idClub = c.idClub";
+            FROM Club c
+            LEFT JOIN Adherence a ON a.idClub = c.idClub AND a.idUtilisateur = ?
+            LEFT JOIN Evenement e ON e.idClub = c.idClub";
     if ($search_query !== '') {
         $sql .= " WHERE c.nom LIKE ?";
     }

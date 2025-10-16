@@ -2,7 +2,7 @@
 session_start();
 require "../database.php";
 
-// Vérifier si l'utilisateur est connecté
+//Vérifier si l'utilisateur est connecté
 if (!isset($_SESSION["user_id"])) {
     header("Location: ../signin.php");
     exit();

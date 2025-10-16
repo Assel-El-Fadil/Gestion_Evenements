@@ -33,7 +33,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         exit;
     }
 
-    $check = $conn->prepare("SELECT idUtilisateur FROM utilisateur WHERE email = ? OR apogee = ?");
+    $check = $conn->prepare("SELECT idUtilisateur FROM Utilisateur WHERE email = ? OR apogee = ?");
     $check->bind_param("ss", $email, $apogee);
     $check->execute();
     $result = $check->get_result();

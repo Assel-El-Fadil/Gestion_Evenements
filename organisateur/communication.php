@@ -38,11 +38,11 @@ try {
     $conn->set_charset('utf8mb4');
 
     $sql = "SELECT r.idUtilisateur, r.idClub, u.nom, u.prenom, u.apogee, u.email, c.nom AS club_nom
-            FROM requete r
-            JOIN utilisateur u ON u.idUtilisateur = r.idUtilisateur
-            JOIN club c ON c.idClub = r.idClub
+            FROM Requete r
+            JOIN Utilisateur u ON u.idUtilisateur = r.idUtilisateur
+            JOIN Club c ON c.idClub = r.idClub
             WHERE r.idClub IN (
-                SELECT idClub FROM adherence WHERE idUtilisateur = ? AND position = 'organisateur'
+                SELECT idClub FROM Adherence WHERE idUtilisateur = ? AND position = 'organisateur'
             )
             ORDER BY c.nom ASC, u.nom ASC, u.prenom ASC";
 
@@ -72,13 +72,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $conn->set_charset('utf8mb4');
 
             // Verify current user is organiser of this club
-<<<<<<< HEAD
             $authStmt = $conn->prepare("SELECT 1 FROM Adherence WHERE idUtilisateur = ? AND idClub = ? AND position = 'organisateur' LIMIT 1");
-            $authStmt->bind_param('ii', $user_id, $reqClubId);
-=======
-            $authStmt = $conn->prepare("SELECT 1 FROM adherence WHERE idUtilisateur = ? AND idClub = ? AND position = 'organisateur' LIMIT 1");
             $authStmt->bind_param('ii', $current_user_id, $reqClubId);
->>>>>>> main
             $authStmt->execute();
             $isOrganiser = $authStmt->get_result()->num_rows > 0;
             $authStmt->close();
@@ -138,48 +133,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $subject = $_POST['subject'] ?? '';
             $message = $_POST['message'] ?? '';
         
-<<<<<<< HEAD
-        if (empty($subject) || empty($message)) {
-            throw new Exception("Le sujet et le message sont obligatoires.");
-        }
-        
-        $recipients = [];
-        
-        if ($recipient_type === 'custom' && !empty($recipient)) {
-            $recipients = array_map('trim', explode(',', $recipient));
-        } else {
-            $conn = db_connect();
-            
-            $conn->set_charset("utf8mb4");
-            
-            switch ($recipient_type) {
-                case 'all-members':
-                    $sql = "SELECT DISTINCT u.email 
-                            FROM Utilisateur u 
-                            JOIN Adherence a ON u.idUtilisateur = a.idUtilisateur 
-                            WHERE a.idClub = ?";
-                    $stmt = $conn->prepare($sql);
-                    $club_id = 1;
-                    $stmt->bind_param("i", $club_id);
-                    break;
-                    
-                case 'event-attendees':
-                    $sql = "SELECT DISTINCT u.email 
-                            FROM Utilisateur u 
-                            JOIN Inscription i ON u.idUtilisateur = i.idUtilisateur 
-                            JOIN Evenement e ON i.idEvenement = e.idEvenement 
-                            WHERE e.idClub = ?";
-                    $stmt = $conn->prepare($sql);
-                    $club_id = 1;
-                    $stmt->bind_param("i", $club_id);
-                    break;
-                    
-                default:
-                    throw new Exception("Type de destinataire invalide.");
-=======
             if (empty($subject) || empty($message)) {
                 throw new Exception("Le sujet et le message sont obligatoires.");
->>>>>>> main
             }
             
             $recipients = [];
@@ -266,37 +221,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 function getFormValue($field) {
     return isset($_POST[$field]) ? htmlspecialchars($_POST[$field]) : '';
 }
-<<<<<<< HEAD
-// Load join requests for clubs managed by current user (organisateur)
-$requests = [];
-try {
-    $conn = db_connect();
-    $conn->set_charset('utf8mb4');
-
-    $sql = "SELECT r.idUtilisateur, r.idClub, u.nom, u.prenom, u.apogee, u.email, c.nom AS club_nom
-            FROM Requete r
-            JOIN Utilisateur u ON u.idUtilisateur = r.idUtilisateur
-            JOIN Club c ON c.idClub = r.idClub
-            WHERE r.idClub IN (
-                SELECT idClub FROM Adherence WHERE idUtilisateur = ? AND position = 'organisateur'
-            )
-            ORDER BY c.nom ASC, u.nom ASC, u.prenom ASC";
-
-    $stmt = $conn->prepare($sql);
-    if ($stmt) {
-        $stmt->bind_param('i', $user_id);
-        $stmt->execute();
-        $res = $stmt->get_result();
-        while ($row = $res->fetch_assoc()) {
-            $requests[] = $row;
-        }
-        $stmt->close();
-    }
-} catch (Exception $e) {
-    // keep $requests empty on error
-}
-=======
->>>>>>> main
 ?>
 
 <!DOCTYPE html>
