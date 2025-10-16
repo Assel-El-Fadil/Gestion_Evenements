@@ -2,13 +2,38 @@
 session_start();
 require_once '../database.php';
 
-// Get user ID from session
-$user_id = $_SESSION['user_id'] ?? 1;
-
-if (!$user_id) {
-    header("Location: ../index.php");
+// Vérifier si l'utilisateur est connecté
+if (!isset($_SESSION["user_id"])) {
+    header("Location: ../signin.php");
     exit();
 }
+
+// Get user ID from session
+$user_id = $_SESSION['user_id'] ?? 1;
+$search_query = trim($_GET['q'] ?? '');
+
+
+
+
+$user_id = $_SESSION['user_id'];
+
+// Récupérer les informations de l'utilisateur
+$conn = db_connect();
+$user_sql = "SELECT nom, prenom, annee, filiere FROM utilisateur WHERE idUtilisateur = ?";
+$stmt_user = $conn->prepare($user_sql);
+$stmt_user->bind_param("i", $user_id);
+$stmt_user->execute();
+$result_user = $stmt_user->get_result();
+$user = $result_user->fetch_assoc();
+
+if (!$user) {
+    header("Location: ../signin.php");
+    exit();
+}
+
+$user_name = $user['prenom'] . ' ' . $user['nom'];
+$user_initials = strtoupper(substr($user['prenom'], 0, 1) . substr($user['nom'], 0, 1));
+$user_department = $user['annee'] . ' - ' . $user['filiere'];
 
 // Fetch events from database
 try {
@@ -56,11 +81,19 @@ try {
             FROM inscription i
             JOIN evenement e ON e.idEvenement = i.idEvenement
             LEFT JOIN club c ON e.idClub = c.idClub
-            WHERE i.idUtilisateur = ?
-            ORDER BY e.date ASC";
+            WHERE i.idUtilisateur = ?";
+    if ($search_query !== '') {
+        $sql .= " AND (e.titre LIKE ? OR c.nom LIKE ? OR e.lieu LIKE ?)";
+    }
+    $sql .= " ORDER BY e.date ASC";
     
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param('i', $user_id);
+    if ($search_query !== '') {
+        $like = "%" . $search_query . "%";
+        $stmt->bind_param('isss', $user_id, $like, $like, $like);
+    } else {
+        $stmt->bind_param('i', $user_id);
+    }
     $stmt->execute();
     $result = $stmt->get_result();
     
@@ -79,7 +112,10 @@ try {
         $events[] = $event;
     }
     
-    // $events contains only the user's events; counters above are global
+    // Compteurs pour l'utilisateur connecté
+    $total_count = count($events);
+    $upcoming_count = count(array_filter($events, function($e) { return $e['is_upcoming']; }));
+    $past_count = $total_count - $upcoming_count;
     
     $stmt->close();
     db_close();
@@ -796,11 +832,11 @@ if (isset($_GET['event_id'])) {
             <div class="sidebar-profile">
                 <div class="profile-card">
                     <div class="profile-avatar">
-                        <span>JS</span>
+                        <span><?php echo $user_initials; ?></span>
                     </div>
                     <div class="profile-info">
-                        <p class="profile-name">Jean Smith</p>
-                        <p class="profile-department">Informatique</p>
+                        <p class="profile-name"><?php echo htmlspecialchars($user_name); ?></p>
+                        <p class="profile-department"><?php echo htmlspecialchars($user_department); ?></p>
                     </div>
                 </div>
             </div>
@@ -817,10 +853,12 @@ if (isset($_GET['event_id'])) {
                         </div>
                         <div class="header-actions">
                             <div class="search-wrapper">
-                                <svg class="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                                </svg>
-                                <input type="text" class="search-input" placeholder="Rechercher des événements">
+                                <form method="GET" class="search-wrapper">
+                                    <svg class="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                                    </svg>
+                                    <input type="text" name="q" class="search-input" value="<?php echo htmlspecialchars($search_query); ?>" placeholder="Rechercher des événements, clubs...">
+                                </form>
                             </div>
                             <button class="notification-btn">
                                 <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">

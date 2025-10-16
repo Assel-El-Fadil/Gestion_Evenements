@@ -1,56 +1,52 @@
 <?php
-
 require "database.php";
 
-db_connect();
+// Récupérer la connexion
+$conn = db_connect();
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $email = trim($_POST["email"]);
     $password = trim($_POST["password"]);
+    
+    // Validation de l'email
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL) || !str_ends_with($email, '@etu.uae.ac.ma')) {
+        $login_error = "Veuillez utiliser une adresse email @etu.uae.ac.ma valide.";
+    }
+    else {
+        // Vérifier si la connexion est établie
+        if ($conn) {
+            $stmt = $conn->prepare("SELECT idUtilisateur, mdp, role, nom, prenom FROM Utilisateur WHERE email = ?");
+            if ($stmt) {
+                $stmt->bind_param("s", $email);
+                $stmt->execute();
+                $stmt->store_result();
 
-    if (!isset($login_error)) {
-        $stmt = $conn->prepare("SELECT idUtilisateur, mdp, role, nom, prenom FROM Utilisateur WHERE email = ?");
-        $stmt->bind_param("s", $email);
-        $stmt->execute();
-        $stmt->store_result();
+                if ($stmt->num_rows > 0) {
+                    $stmt->bind_result($idUtilisateur, $hashed_password, $role, $nom, $prenom);
+                    $stmt->fetch();
 
-        if ($stmt->num_rows > 0) {
-            $stmt->bind_result($idUtilisateur, $hashed_password, $role, $nom, $prenom);
-            $stmt->fetch();
+                    if (password_verify($password, $hashed_password)) {
+                        session_start();
+                        $_SESSION["user_id"] = $idUtilisateur;
+                        $_SESSION["user_role"] = $role;
+                        $_SESSION["user_name"] = $nom . " " . $prenom;
 
-            if (password_verify($password, $hashed_password)) {
-                
-                session_start();
-                $_SESSION["user_id"] = $idUtilisateur;
-                $_SESSION["user_role"] = $role;
-                $_SESSION["user_name"] = $nom . " " . $prenom;
-
-                // Redirect based on user role
-                switch($role) {
-                    case 'organisateur':
+                        // Redirection directe vers organisateur/home.php
                         header("Location: organisateur/home.php");
-                        break;
-                    case 'utilisateur':
-                        header("Location: utilisateur/home.php");
-                        break;
-                    case 'admin':
-                        // Admin page not created yet - redirect to default or show message
-                        header("Location: organisateur/home.php"); // Temporary redirect
-                        break;
-                    default:
-                        // Default fallback
-                        header("Location: utilisateur/home.php");
-                        break;
+                        exit();
+                    } else {
+                        $login_error = "Mot de passe incorrect.";
+                    }
+                } else {
+                    $login_error = "Aucun compte trouvé avec cet email.";
                 }
-                exit();
+                $stmt->close();
             } else {
-                $login_error = "Mot de passe incorrect.";
+                $login_error = "Erreur de préparation de la requête.";
             }
         } else {
-            $login_error = "Aucun compte trouvé avec cet email.";
+            $login_error = "Erreur de connexion à la base de données.";
         }
-
-        $stmt->close();
     }
 }
 ?>
@@ -237,19 +233,24 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             right: 0.75rem;
             top: 50%;
             transform: translateY(-50%);
-            background: none;
-            border: none;
-            color: rgba(255,255,255,0.6);
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 0.25rem;
+            color: rgba(255,255,255,0.8);
             cursor: pointer;
-            padding: 0;
+            padding: 0.25rem;
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: color 0.2s;
+            transition: all 0.2s;
+            width: 2rem;
+            height: 2rem;
         }
 
         .password-toggle:hover {
-            color: rgba(255,255,255,0.8);
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border-color: rgba(255,255,255,0.4);
         }
 
         .password-toggle svg {
@@ -375,7 +376,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             </div>
         <?php endif; ?>
 
-        <form class="form" method="post">
+        <form class="form" method="post" onsubmit="return validateForm()">
             <div class="form-group">
                 <label for="email" class="label">Email</label>
                 <div class="input-container">
@@ -450,6 +451,18 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     </div>
 
     <script>
+        function validateForm() {
+            const email = document.getElementById('email').value;
+            
+            // Validation email uniquement
+            if (!email.endsWith('@etu.uae.ac.ma') || !email.includes('@')) {
+                alert('Veuillez utiliser une adresse email @etu.uae.ac.ma valide.');
+                return false;
+            }
+            
+            return true;
+        }
+
         function togglePassword() {
             const passwordInput = document.getElementById('password');
             const eyeClosed = document.getElementById('eye-closed');
@@ -465,6 +478,16 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 eyeOpen.classList.add('hidden');
             }
         }
+
+        // Validation en temps réel pour l'email uniquement
+        document.getElementById('email').addEventListener('blur', function() {
+            const email = this.value;
+            if (email && (!email.endsWith('@etu.uae.ac.ma') || !email.includes('@'))) {
+                this.style.borderColor = '#ef4444';
+            } else {
+                this.style.borderColor = 'rgba(255,255,255,0.2)';
+            }
+        });
 
         document.addEventListener('DOMContentLoaded', function() {
             const errorMessage = document.querySelector('.error-message');

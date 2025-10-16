@@ -1,34 +1,36 @@
 <?php
-
 session_start();
 require_once '../database.php';
 
-$user_id = $_SESSION['user_id'] ?? 1;
+// Vérifier si l'utilisateur est connecté
+if (!isset($_SESSION["user_id"])) {
+    header("Location: ../signin.php");
+    exit();
+}
+
+$user_id = $_SESSION['user_id'];
 
 $conn = db_connect();
 
-$user = null;
-$initials = "JS"; 
-$success_message = '';
-$error_message = '';
+// Récupérer les informations de l'utilisateur
+$user_sql = "SELECT nom, prenom, annee, filiere FROM utilisateur WHERE idUtilisateur = ?";
+$stmt = $conn->prepare($user_sql);
+$stmt->bind_param("i", $user_id);
+$stmt->execute();
+$result = $stmt->get_result();
+$user = $result->fetch_assoc();
 
-if ($user_id) {
-    $user_sql = "SELECT nom, prenom, filiere FROM utilisateur WHERE idUtilisateur = ?";
-    $stmt = $conn->prepare($user_sql);
-    $stmt->bind_param("i", $user_id);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    
-    if ($result->num_rows > 0) {
-        $user = $result->fetch_assoc();
-        $first_initial = substr($user['prenom'], 0, 1);
-        $last_initial = substr($user['nom'], 0, 1);
-        $initials = strtoupper($first_initial . $last_initial);
-    }
-    $stmt->close();
+if (!$user) {
+    header("Location: ../signin.php");
+    exit();
 }
 
+$user_name = $user['prenom'] . ' ' . $user['nom'];
+$user_initials = strtoupper(substr($user['prenom'], 0, 1) . substr($user['nom'], 0, 1));
+$user_department = $user['annee'] . ' - ' . $user['filiere'];
+
 $stats = [];
+$search_query = trim($_GET['q'] ?? '');
 
 // Handle event registration
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -96,10 +98,22 @@ $stats['categories'] = $result->fetch_assoc()['count'];
 $events_sql = "SELECT e.*, c.nom as club_nom 
                FROM evenement e 
                JOIN club c ON e.idClub = c.idClub 
-               WHERE e.date >= CURDATE()
-               ORDER BY e.date ASC ";
-$events_result = $conn->query($events_sql);
-$events_count = $events_result->num_rows;
+               WHERE e.date >= CURDATE()";
+if ($search_query !== '') {
+    $events_sql .= " AND (e.titre LIKE ? OR c.nom LIKE ? OR e.lieu LIKE ?)";
+}
+$events_sql .= " ORDER BY e.date ASC";
+
+if ($search_query !== '') {
+    $like = "%" . $search_query . "%";
+    $stmtEv = $conn->prepare($events_sql);
+    $stmtEv->bind_param('sss', $like, $like, $like);
+    $stmtEv->execute();
+    $events_result = $stmtEv->get_result();
+} else {
+    $events_result = $conn->query($events_sql);
+}
+$events_count = $events_result ? $events_result->num_rows : 0;
 
 // Preload user's registered events to disable the button
 $user_event_ids = [];
@@ -121,7 +135,7 @@ db_close();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ClubConnect - Découvrir les Événements</title>
-    <style>
+     <style>
         * {
             margin: 0;
             padding: 0;
@@ -747,11 +761,12 @@ db_close();
         .profile-name { color: #ffffff; font-weight: 500; font-size: 1rem; line-height: 1.5; }
         .profile-department { color: #9ca3af; font-size: 0.875rem; line-height: 1.5; }
     </style>
-    </head>
-    <body>
-        <div class="bg-gradient"></div>
-        <div class="orb orb-1"></div>
-        <div class="orb orb-2"></div>
+</head>
+<body>
+    <div class="bg-gradient"></div>
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    
     <div class="container">
         <div class="sidebar">
             <div class="sidebar-header">
@@ -818,11 +833,11 @@ db_close();
             <div class="sidebar-profile">
                 <div class="profile-card">
                     <div class="profile-avatar">
-                        <span>JS</span>
+                        <span><?php echo $user_initials; ?></span>
                     </div>
                     <div class="profile-info">
-                        <p class="profile-name">Jean Smith</p>
-                        <p class="profile-department">Informatique</p>
+                        <p class="profile-name"><?php echo htmlspecialchars($user_name); ?></p>
+                        <p class="profile-department"><?php echo htmlspecialchars($user_department); ?></p>
                     </div>
                 </div>
             </div>
@@ -842,10 +857,12 @@ db_close();
                         <p class="header-subtitle">Trouvez et rejoignez des événements passionnants sur votre campus</p>
                     </div>
                     <div class="search-container">
-                        <svg class="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                        </svg>
-                        <input type="text" class="search-input" placeholder="Rechercher des événements, clubs...">
+                        <form method="GET" style="position:relative;">
+                            <svg class="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                            </svg>
+                            <input type="text" name="q" class="search-input" placeholder="Rechercher des événements, clubs..." value="<?= htmlspecialchars($search_query) ?>">
+                        </form>
                     </div>
                 </div>
                 <?php if (!empty($success_message)): ?>
