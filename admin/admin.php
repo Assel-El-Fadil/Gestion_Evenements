@@ -26,6 +26,26 @@ function sanitizeInt($value) {
     return intval($value ?? 0);
 }
 
+// Function to check if user is organizer in any club
+function isUserOrganizerInAnyClub($conn, $userId) {
+    $stmt = $conn->prepare("SELECT COUNT(*) as count FROM Adherence WHERE idUtilisateur = ? AND position = 'organisateur'");
+    $stmt->bind_param('i', $userId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $count = $result->fetch_assoc()['count'];
+    $stmt->close();
+    return $count > 0;
+}
+
+// Function to update user role in Utilisateur table
+function updateUserRole($conn, $userId, $newRole) {
+    $stmt = $conn->prepare("UPDATE Utilisateur SET role = ? WHERE idUtilisateur = ?");
+    $stmt->bind_param('si', $newRole, $userId);
+    $success = $stmt->execute();
+    $stmt->close();
+    return $success;
+}
+
 // Handle actions
 try {
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -59,7 +79,28 @@ try {
                     $stmtU = $conn->prepare('UPDATE Adhérence SET position = ? WHERE idUtilisateur = ? AND idClub = ?');
                     $stmtU->bind_param('sii', $new_role, $uid, $cid);
                     if ($stmtU->execute()) {
-                        $success_message = "Rôle mis à jour en \"$new_role\".";
+                        // Automatically update user role based on club position
+                        if ($new_role === 'organisateur') {
+                            // Promoting to organizer - update user role to 'organisateur'
+                            if (updateUserRole($conn, $uid, 'organisateur')) {
+                                $success_message = "Utilisateur promu organisateur et rôle mis à jour en \"$new_role\".";
+                            } else {
+                                $success_message = "Rôle mis à jour en \"$new_role\" mais erreur lors de la mise à jour du rôle utilisateur.";
+                            }
+                        } else {
+                            // Demoting from organizer - check if user is organizer in any other club
+                            if (isUserOrganizerInAnyClub($conn, $uid)) {
+                                // User is still organizer in other clubs, keep role as 'organisateur'
+                                $success_message = "Rôle mis à jour en \"$new_role\" (utilisateur reste organisateur dans d'autres clubs).";
+                            } else {
+                                // User is no longer organizer in any club, update role to 'utilisateur'
+                                if (updateUserRole($conn, $uid, 'utilisateur')) {
+                                    $success_message = "Utilisateur rétrogradé et rôle mis à jour en \"utilisateur\".";
+                                } else {
+                                    $success_message = "Rôle mis à jour en \"$new_role\" mais erreur lors de la mise à jour du rôle utilisateur.";
+                                }
+                            }
+                        }
                     } else {
                         throw new Exception('Erreur lors de la mise à jour du rôle');
                     }
@@ -112,7 +153,12 @@ try {
                 $memb->execute();
                 $memb->close();
 
-                $success_message = "Club ajouté avec succès et organisateur associé.";
+                // Automatically update user role to 'organisateur' since they are now a club organizer
+                if (updateUserRole($conn, $organisateur_id, 'organisateur')) {
+                    $success_message = "Club ajouté avec succès, organisateur associé et rôle mis à jour.";
+                } else {
+                    $success_message = "Club ajouté avec succès et organisateur associé (erreur lors de la mise à jour du rôle).";
+                }
                 $selected_club = $new_club_id;
             } else {
                 throw new Exception("Erreur lors de l'ajout du club");
@@ -531,5 +577,3 @@ db_close();
     </div>
 </body>
 </html>
-
-
