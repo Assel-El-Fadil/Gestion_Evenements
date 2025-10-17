@@ -1,19 +1,16 @@
 <?php
 require "database.php";
 
-// Récupérer la connexion
 $conn = db_connect();
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $email = trim($_POST["email"]);
     $password = trim($_POST["password"]);
     
-    // Validation de l'email
     if (!filter_var($email, FILTER_VALIDATE_EMAIL) || !str_ends_with($email, '@etu.uae.ac.ma')) {
         $login_error = "Veuillez utiliser une adresse email @etu.uae.ac.ma valide.";
     }
     else {
-        // Vérifier si la connexion est établie
         if ($conn) {
             $stmt = $conn->prepare("SELECT idUtilisateur, mdp, role, nom, prenom FROM Utilisateur WHERE email = ?");
             if ($stmt) {
@@ -31,7 +28,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                         $_SESSION["user_role"] = $role;
                         $_SESSION["user_name"] = $nom . " " . $prenom;
 
-                        // Redirection basée sur le rôle de l'utilisateur
                         switch ($role) {
                             case 'organisateur':
                                 header("Location: organisateur/home.php");
@@ -88,7 +84,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             overflow: hidden;
         }
 
-        /* Background layers */
         .bg-gradient {
             position: absolute;
             inset: 0;
@@ -96,7 +91,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             z-index: 0;
         }
 
-        /* Animated orbs */
         .orb {
             position: absolute;
             border-radius: 50%;
@@ -467,7 +461,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         function validateForm() {
             const email = document.getElementById('email').value;
             
-            // Validation email uniquement
             if (!email.endsWith('@etu.uae.ac.ma') || !email.includes('@')) {
                 alert('Veuillez utiliser une adresse email @etu.uae.ac.ma valide.');
                 return false;
@@ -492,7 +485,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             }
         }
 
-        // Validation en temps réel pour l'email uniquement
         document.getElementById('email').addEventListener('blur', function() {
             const email = this.value;
             if (email && (!email.endsWith('@etu.uae.ac.ma') || !email.includes('@'))) {

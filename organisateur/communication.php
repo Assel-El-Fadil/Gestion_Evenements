@@ -8,7 +8,6 @@ use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\SMTP;
 use PHPMailer\PHPMailer\Exception;
 
-// Vérifier si l'utilisateur est connecté
 if (!isset($_SESSION["user_id"])) {
     header("Location: ../signin.php");
     exit();
@@ -16,7 +15,6 @@ if (!isset($_SESSION["user_id"])) {
 
 $current_user_id = $_SESSION["user_id"];
 
-// Récupérer les informations de l'utilisateur
 $conn = db_connect();
 $user_sql = "SELECT nom, prenom, annee, filiere FROM Utilisateur WHERE idUtilisateur = ?";
 $stmt_user = $conn->prepare($user_sql);
@@ -37,7 +35,6 @@ $user_department = $user['annee'] . ' - ' . $user['filiere'];
 $success_message = '';
 $error_message = '';
 
-// Function to get clubs where user is organizer
 function getOrganizerClubs($conn, $userId) {
     $clubs = [];
     $sql = "SELECT c.idClub, c.nom FROM Club c 
@@ -55,7 +52,6 @@ function getOrganizerClubs($conn, $userId) {
     return $clubs;
 }
 
-// Function to get events from clubs where user is organizer
 function getOrganizerEvents($conn, $userId) {
     $events = [];
     $sql = "SELECT e.idEvenement, e.titre, c.nom as club_nom 
@@ -75,12 +71,10 @@ function getOrganizerEvents($conn, $userId) {
     return $events;
 }
 
-// Function to send email using PHPMailer
 function sendEmail($to, $subject, $message, $fromName = 'ClubConnect') {
     $mail = new PHPMailer(true);
     
     try {
-        // Server settings
         $mail->isSMTP();
         $mail->Host = SMTP_HOST;
         $mail->SMTPAuth = true;
@@ -89,10 +83,8 @@ function sendEmail($to, $subject, $message, $fromName = 'ClubConnect') {
         $mail->SMTPSecure = SMTP_ENCRYPTION === 'ssl' ? PHPMailer::ENCRYPTION_SMTPS : PHPMailer::ENCRYPTION_STARTTLS;
         $mail->Port = SMTP_PORT;
         
-        // Recipients
         $mail->setFrom(FROM_EMAIL, $fromName);
         
-        // Add recipients
         if (is_array($to)) {
             foreach ($to as $email) {
                 $mail->addAddress($email);
@@ -101,7 +93,6 @@ function sendEmail($to, $subject, $message, $fromName = 'ClubConnect') {
             $mail->addAddress($to);
         }
         
-        // Content
         $mail->isHTML(true);
         $mail->Subject = $subject;
         $mail->Body = nl2br($message);
@@ -113,11 +104,9 @@ function sendEmail($to, $subject, $message, $fromName = 'ClubConnect') {
     }
 }
 
-// Get clubs and events where user is organizer
 $organizer_clubs = getOrganizerClubs($conn, $current_user_id);
 $organizer_events = getOrganizerEvents($conn, $current_user_id);
 
-// Load join requests for clubs managed by current user (organisateur)
 $requests = [];
 try {
     $conn = db_connect();
@@ -143,12 +132,10 @@ try {
         $stmt->close();
     }
 } catch (Exception $e) {
-    // keep $requests empty on error
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
-        // Handle approval/rejection of join requests
         if (isset($_POST['request_action'], $_POST['req_user_id'], $_POST['req_club_id'])) {
             $action = $_POST['request_action'];
             $reqUserId = intval($_POST['req_user_id']);
@@ -157,7 +144,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $conn = db_connect();
             $conn->set_charset('utf8mb4');
 
-            // Verify current user is organiser of this club
             $authStmt = $conn->prepare("SELECT 1 FROM Adherence WHERE idUtilisateur = ? AND idClub = ? AND position = 'organisateur' LIMIT 1");
             $authStmt->bind_param('ii', $current_user_id, $reqClubId);
             $authStmt->execute();
@@ -169,7 +155,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             if ($action === 'approve') {
-                // Add to adherence if not already present
                 $chkStmt = $conn->prepare("SELECT 1 FROM Adherence WHERE idUtilisateur = ? AND idClub = ? LIMIT 1");
                 $chkStmt->bind_param('ii', $reqUserId, $reqClubId);
                 $chkStmt->execute();
@@ -183,7 +168,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $insStmt->close();
                 }
 
-                // Remove from requete
                 $delStmt = $conn->prepare("DELETE FROM Requete WHERE idUtilisateur = ? AND idClub = ?");
                 $delStmt->bind_param('ii', $reqUserId, $reqClubId);
                 $delStmt->execute();
@@ -191,20 +175,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 $success_message = "Requête approuvée et membre ajouté.";
                 
-                // Refresh requests list
                 $requests = array_filter($requests, function($req) use ($reqUserId, $reqClubId) {
                     return !($req['idUtilisateur'] == $reqUserId && $req['idClub'] == $reqClubId);
                 });
                 
             } elseif ($action === 'reject') {
-                // Just remove from requete
                 $delStmt = $conn->prepare("DELETE FROM Requete WHERE idUtilisateur = ? AND idClub = ?");
                 $delStmt->bind_param('ii', $reqUserId, $reqClubId);
                 $delStmt->execute();
                 $delStmt->close();
                 $success_message = "Requête rejetée et supprimée.";
                 
-                // Refresh requests list
                 $requests = array_filter($requests, function($req) use ($reqUserId, $reqClubId) {
                     return !($req['idUtilisateur'] == $reqUserId && $req['idClub'] == $reqClubId);
                 });
@@ -213,7 +194,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
         } else {
-            // Handle email sending
             $recipient = $_POST['recipient'] ?? '';
             $recipient_type = $_POST['recipient-type'] ?? 'custom';
             $selected_club = $_POST['selected_club'] ?? '';
@@ -237,7 +217,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         if (empty($selected_club)) {
                             throw new Exception("Veuillez sélectionner un club.");
                         }
-                        // Get all members of selected club
                         $sql = "SELECT DISTINCT u.email 
                                 FROM Utilisateur u 
                                 JOIN Adherence a ON u.idUtilisateur = a.idUtilisateur 
@@ -250,7 +229,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         if (empty($selected_event)) {
                             throw new Exception("Veuillez sélectionner un événement.");
                         }
-                        // Get attendees of selected event
                         $sql = "SELECT DISTINCT u.email 
                                 FROM Utilisateur u 
                                 JOIN Inscription i ON u.idUtilisateur = i.idUtilisateur 
@@ -288,7 +266,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new Exception("Aucune adresse email valide trouvée.");
             }
             
-            // Send email using PHPMailer
             if (sendEmail($valid_recipients, $subject, $message, $user_name)) {
                 $success_message = "Email envoyé avec succès à " . count($valid_recipients) . " destinataires !<br>";
                 $success_message .= "<strong>Sujet:</strong> " . htmlspecialchars($subject) . "<br>";
@@ -333,7 +310,6 @@ function getFormValue($field) {
             -moz-osx-font-smoothing: grayscale;
         }
 
-        /* Background layers */
         .bg-gradient {
             position: fixed;
             inset: 0;
@@ -341,7 +317,6 @@ function getFormValue($field) {
             z-index: -2;
         }
 
-        /* Animated orbs */
         .orb {
             position: fixed;
             border-radius: 50%;
@@ -376,7 +351,6 @@ function getFormValue($field) {
             }
         }
 
-        /* Dashboard Layout */
         .dashboard {
             display: flex;
             min-height: 100vh;
@@ -509,7 +483,6 @@ function getFormValue($field) {
             line-height: 1.5;
         }
 
-        /* Main Content */
         .main-content {
             flex: 1;
             padding: 1.5rem;
@@ -555,7 +528,6 @@ function getFormValue($field) {
             line-height: 1.5;
         }
 
-        /* Messages */
         .success-message {
             background: rgba(34, 197, 94, 0.2);
             border: 1px solid rgba(34, 197, 94, 0.3);
@@ -578,7 +550,6 @@ function getFormValue($field) {
             font-weight: 500;
         }
 
-        /* Card */
         .card {
             background: rgba(255, 255, 255, 0.05);
             backdrop-filter: blur(16px);
@@ -588,7 +559,6 @@ function getFormValue($field) {
             margin-bottom: 1.5rem;
         }
 
-        /* Tabs */
         .tabs-list {
             display: flex;
             gap: 0.25rem;
@@ -615,7 +585,6 @@ function getFormValue($field) {
         .tab-content { display: none; }
         .tab-content.active { display: block; }
 
-        /* Table */
         .table {
             width: 100%;
             border-collapse: collapse;
@@ -630,7 +599,6 @@ function getFormValue($field) {
         .table th { color: #9ca3af; font-weight: 600; }
         .muted { color: #9ca3af; }
 
-        /* Form */
         .form-group {
             margin-bottom: 1.5rem;
         }
@@ -689,7 +657,6 @@ function getFormValue($field) {
             min-height: 120px;
         }
 
-        /* Radio Group */
         .radio-group {
             display: flex;
             flex-direction: row;
@@ -729,7 +696,6 @@ function getFormValue($field) {
             flex: 1;
         }
 
-        /* Button Group */
         .button-group {
             display: flex;
             gap: 1rem;
@@ -774,7 +740,6 @@ function getFormValue($field) {
             font-size: 0.75rem;
         }
 
-        /* Stats Grid */
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -838,7 +803,6 @@ function getFormValue($field) {
             color: #4ade80;
         }
 
-        /* Responsive Design */
         @media (max-width: 768px) {
             .dashboard {
                 flex-direction: column;
@@ -996,7 +960,6 @@ function getFormValue($field) {
                     <button class="tab-trigger" onclick="switchTab('requetes')">Requêtes d'Adhésion (<?php echo count($requests); ?>)</button>
                 </div>
 
-                <!-- Email Tab -->
                 <div id="tab-email" class="tab-content active">
                     <form method="POST" class="card">
                         <div class="form-group">
@@ -1020,7 +983,6 @@ function getFormValue($field) {
                             </div>
                         </div>
 
-                        <!-- Club Selection (for all-members) -->
                         <div class="form-group" id="club-selection" style="display: none;">
                             <label for="selected_club">Sélectionner un Club</label>
                             <select id="selected_club" name="selected_club" class="form-group">
@@ -1034,7 +996,6 @@ function getFormValue($field) {
                             </select>
                         </div>
 
-                        <!-- Event Selection (for event-attendees) -->
                         <div class="form-group" id="event-selection" style="display: none;">
                             <label for="selected_event">Sélectionner un Événement</label>
                             <select id="selected_event" name="selected_event" class="form-group">
@@ -1048,7 +1009,6 @@ function getFormValue($field) {
                             </select>
                         </div>
 
-                        <!-- Custom Recipients (for custom) -->
                         <div class="form-group" id="custom-recipients">
                             <label for="recipient">À (adresses email séparées par des virgules)</label>
                             <input 
@@ -1089,7 +1049,6 @@ function getFormValue($field) {
                     </form>
                 </div>
 
-                <!-- Requêtes Tab -->
                 <div id="tab-requetes" class="tab-content">
                     <div class="card">
                         <?php if (empty($requests)) { ?>
@@ -1161,12 +1120,10 @@ function getFormValue($field) {
             function toggleFormFields() {
                 const selectedRadio = document.querySelector('input[name="recipient-type"]:checked');
                 
-                // Hide all conditional fields
                 clubSelection.style.display = 'none';
                 eventSelection.style.display = 'none';
                 customRecipients.style.display = 'none';
                 
-                // Show relevant field based on selection
                 if (selectedRadio) {
                     switch (selectedRadio.value) {
                         case 'all-members':
@@ -1186,7 +1143,6 @@ function getFormValue($field) {
                 radio.addEventListener('change', toggleFormFields);
             });
             
-            // Initialize form fields on page load
             toggleFormFields();
         });
     </script>

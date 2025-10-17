@@ -2,7 +2,6 @@
 session_start();
 require "../database.php";
 
-// Vérifier si l'utilisateur est connecté
 if (!isset($_SESSION["user_id"])) {
     header("Location: ../signin.php");
     exit();
@@ -11,7 +10,6 @@ if (!isset($_SESSION["user_id"])) {
 $current_user_id = $_SESSION["user_id"];
 $conn = db_connect();
 
-// Récupérer les informations de l'utilisateur
 $user_sql = "SELECT nom, prenom, annee, filiere FROM Utilisateur WHERE idUtilisateur = ?";
 $stmt_user = $conn->prepare($user_sql);
 $stmt_user->bind_param("i", $current_user_id);
@@ -28,7 +26,6 @@ $user_name = $user['prenom'] . ' ' . $user['nom'];
 $user_initials = strtoupper(substr($user['prenom'], 0, 1) . substr($user['nom'], 0, 1));
 $user_department = $user['annee'] . ' - ' . $user['filiere'];
 
-// Récupérer les attestations de l'utilisateur connecté
 $sql = "SELECT 
             a.idUtilisateur,
             a.idEvenement,
@@ -60,7 +57,6 @@ if ($result) {
     }
 }
 
-// Statistiques pour l'utilisateur connecté
 $sql_total_certificats = "SELECT COUNT(*) as total FROM Attestation WHERE idUtilisateur = ?";
 $stmt_total = $conn->prepare($sql_total_certificats);
 $stmt_total->bind_param("i", $current_user_id);
@@ -119,7 +115,6 @@ $conn->close();
             -moz-osx-font-smoothing: grayscale;
         }
 
-        /* Background layers */
         .bg-gradient {
             position: fixed;
             inset: 0;
@@ -127,7 +122,6 @@ $conn->close();
             z-index: -2;
         }
 
-        /* Animated orbs */
         .orb {
             position: fixed;
             border-radius: 50%;
@@ -627,7 +621,6 @@ $conn->close();
                 justify-content: center;
             }
         }
-        /* Canonical Sidebar Overrides */
         .sidebar {
             width: 256px;
             height: 100vh;

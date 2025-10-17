@@ -2,8 +2,7 @@
 session_start();
 require_once '../database.php';
 
-// Simple admin gate (extend as needed)
-$is_admin = true; // TODO: replace with real admin check
+$is_admin = true;
 if (!$is_admin) {
     header('HTTP/1.1 403 Forbidden');
     echo 'Access denied';
@@ -16,7 +15,6 @@ $conn->set_charset('utf8mb4');
 $success_message = '';
 $error_message = '';
 
-// Pagination and search parameters
 $users_per_page = 30;
 $current_page = max(1, intval($_GET['page'] ?? 1));
 $search_query = trim($_GET['search'] ?? '');
@@ -26,7 +24,6 @@ function sanitizeInt($value) {
     return intval($value ?? 0);
 }
 
-// Function to check if user is organizer in any club
 function isUserOrganizerInAnyClub($conn, $userId) {
     $stmt = $conn->prepare("SELECT COUNT(*) as count FROM Adherence WHERE idUtilisateur = ? AND position = 'organisateur'");
     $stmt->bind_param('i', $userId);
@@ -37,7 +34,6 @@ function isUserOrganizerInAnyClub($conn, $userId) {
     return $count > 0;
 }
 
-// Function to update user role in Utilisateur table
 function updateUserRole($conn, $userId, $newRole) {
     $stmt = $conn->prepare("UPDATE Utilisateur SET role = ? WHERE idUtilisateur = ?");
     $stmt->bind_param('si', $newRole, $userId);
@@ -46,7 +42,6 @@ function updateUserRole($conn, $userId, $newRole) {
     return $success;
 }
 
-// Handle actions
 try {
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $action = $_POST['action'] ?? '';
@@ -70,7 +65,6 @@ try {
             $cid = sanitizeInt($_POST['idClub'] ?? 0);
             $new_role = ($_POST['new_role'] ?? '') === 'organisateur' ? 'organisateur' : 'membre';
             if ($uid > 0 && $cid > 0) {
-                // Ensure membership exists
                 $stmtC = $conn->prepare('SELECT position FROM Adherence WHERE idUtilisateur = ? AND idClub = ?');
                 $stmtC->bind_param('ii', $uid, $cid);
                 $stmtC->execute();
@@ -79,21 +73,16 @@ try {
                     $stmtU = $conn->prepare('UPDATE Adherence SET position = ? WHERE idUtilisateur = ? AND idClub = ?');
                     $stmtU->bind_param('sii', $new_role, $uid, $cid);
                     if ($stmtU->execute()) {
-                        // Automatically update user role based on club position
                         if ($new_role === 'organisateur') {
-                            // Promoting to organizer - update user role to 'organisateur'
                             if (updateUserRole($conn, $uid, 'organisateur')) {
                                 $success_message = "Utilisateur promu organisateur et rôle mis à jour en \"$new_role\".";
                             } else {
                                 $success_message = "Rôle mis à jour en \"$new_role\" mais erreur lors de la mise à jour du rôle utilisateur.";
                             }
                         } else {
-                            // Demoting from organizer - check if user is organizer in any other club
                             if (isUserOrganizerInAnyClub($conn, $uid)) {
-                                // User is still organizer in other clubs, keep role as 'organisateur'
                                 $success_message = "Rôle mis à jour en \"$new_role\" (utilisateur reste organisateur dans d'autres clubs).";
                             } else {
-                                // User is no longer organizer in any club, update role to 'utilisateur'
                                 if (updateUserRole($conn, $uid, 'utilisateur')) {
                                     $success_message = "Utilisateur rétrogradé et rôle mis à jour en \"utilisateur\".";
                                 } else {
@@ -121,7 +110,6 @@ try {
             if (!filter_var($organisateur_email, FILTER_VALIDATE_EMAIL)) {
                 throw new Exception("Veuillez saisir un email valide");
             }
-            // Ensure organizer exists
             $user_stmt = $conn->prepare('SELECT idUtilisateur FROM Utilisateur WHERE email = ?');
             $user_stmt->bind_param('s', $organisateur_email);
             $user_stmt->execute();
@@ -133,7 +121,6 @@ try {
             }
             $organisateur_id = intval($user['idUtilisateur']);
 
-            // Check club name uniqueness
             $chk = $conn->prepare('SELECT 1 FROM Club WHERE nom = ?');
             $chk->bind_param('s', $club_nom);
             $chk->execute();
@@ -142,18 +129,15 @@ try {
             if ($exists) {
                 throw new Exception('Un club avec ce nom existe déjà');
             }
-            // Create club
             $stmt = $conn->prepare('INSERT INTO Club (nom,nbrMembres) VALUES (?, 1)');
             $stmt->bind_param('s', $club_nom);
             if ($stmt->execute()) {
                 $new_club_id = intval($conn->insert_id);
-                // Add organizer membership
                 $memb = $conn->prepare("INSERT INTO Adherence (idUtilisateur, idClub, position) VALUES (?, ?, 'organisateur')");
                 $memb->bind_param('ii', $organisateur_id, $new_club_id);
                 $memb->execute();
                 $memb->close();
 
-                // Automatically update user role to 'organisateur' since they are now a club organizer
                 if (updateUserRole($conn, $organisateur_id, 'organisateur')) {
                     $success_message = "Club ajouté avec succès, organisateur associé et rôle mis à jour.";
                 } else {
@@ -170,26 +154,22 @@ try {
     $error_message = $e->getMessage();
 }
 
-// Load data
 $users = [];
 $clubs_memberships = [];
 $clubs = [];
 $total_users = 0;
 $total_pages = 0;
 
-// Get all clubs for dropdown
 $result = $conn->query("SELECT idClub, nom FROM Club ORDER BY nom");
 if ($result) {
     while ($row = $result->fetch_assoc()) { $clubs[] = $row; }
     $result->close();
 }
 
-// If no specific club selected, default to the first available club
 if ($selected_club === 0 && !empty($clubs)) {
     $selected_club = intval($clubs[0]['idClub']);
 }
 
-// Users with search and pagination
 $where_conditions = [];
 $params = [];
 $param_types = '';
@@ -203,7 +183,6 @@ if (!empty($search_query)) {
 
 $where_clause = !empty($where_conditions) ? 'WHERE ' . implode(' AND ', $where_conditions) . ' AND idUtilisateur != 1' : 'WHERE idUtilisateur != 1';
 
-// Count total users for pagination
 $count_sql = "SELECT COUNT(*) as total FROM Utilisateur $where_clause";
 if (!empty($params)) {
     $stmt = $conn->prepare($count_sql);
@@ -221,7 +200,6 @@ if (!empty($params)) {
 $total_pages = ceil($total_users / $users_per_page);
 $offset = ($current_page - 1) * $users_per_page;
 
-// Get users with pagination
 $users_sql = "SELECT idUtilisateur, nom, prenom, email, filiere FROM Utilisateur $where_clause ORDER BY nom, prenom LIMIT ? OFFSET ?";
 $params[] = $users_per_page;
 $params[] = $offset;
@@ -234,7 +212,6 @@ $result = $stmt->get_result();
 while ($row = $result->fetch_assoc()) { $users[] = $row; }
 $stmt->close();
 
-// Memberships (user-club with role) - always filtered by selected club
 $sql_members = "SELECT a.idUtilisateur, a.idClub, COALESCE(a.position, 'membre') AS position,
                        u.nom AS user_nom, u.prenom AS user_prenom, u.email AS user_email,
                        c.nom AS club_nom
@@ -322,18 +299,17 @@ db_close();
         .btn-danger:hover { background: rgba(239,68,68,0.3); }
         .badge { display:inline-flex; align-items:center; padding:.2rem .5rem; border-radius:.4rem; font-size:.75rem; border:1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.06); }
 
-        /* Select dropdown visibility in dark theme */
         select {
             background-color: rgba(17,24,39,0.95);
             color: #fff;
             border: 1px solid rgba(255,255,255,0.2);
         }
         select option {
-            background-color: #111827; /* dark */
+            background-color: #111827;
             color: #ffffff;
         }
         select option:hover, select option:checked {
-            background-color: #374151; /* highlight */
+            background-color: #374151;
             color: #ffffff;
         }
 
@@ -399,7 +375,6 @@ db_close();
                         <span class="muted">Total: <?php echo $total_users; ?> | Page: <?php echo $current_page; ?>/<?php echo $total_pages; ?></span>
                     </div>
                     
-                    <!-- Search and pagination controls -->
                     <div style="display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; align-items: center;">
                         <form method="GET" style="display: flex; gap: 0.5rem; align-items: center;">
                             <input type="text" name="search" placeholder="Rechercher par nom, email, filière..." 
@@ -449,7 +424,6 @@ db_close();
                         </table>
                     </div>
                     
-                    <!-- Pagination -->
                     <?php if ($total_pages > 1): ?>
                         <div style="display: flex; justify-content: center; gap: 0.5rem; margin-top: 1rem; flex-wrap: wrap;">
                             <?php if ($current_page > 1): ?>
@@ -510,7 +484,6 @@ db_close();
                         <span class="muted">Membres listés: <?php echo count($clubs_memberships); ?></span>
                     </div>
                     
-                    <!-- Club selection -->
                     <div style="margin-bottom: 1rem;">
                         <form method="GET" style="display: flex; gap: 0.5rem; align-items: center;">
                             <label for="club_select" style="color: #d1d5db; font-weight: 500;">Sélectionner un club:</label>

@@ -2,9 +2,7 @@
 
 require "configure.php";
 
-// DESTROY ANY EXISTING SESSIONS AT THE START
 session_destroy();
-// Start a fresh session
 session_start();
 
 $error_message = null;
@@ -104,8 +102,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         JavaScript requis pour reCAPTCHA.
     </noscript>
     <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
-    <!-- The CSP meta above mitigates mixed-content issues when served over HTTP in local setups. -->
-    <!-- Ensure this file remains minimal to avoid interfering with main page styles. -->
 </head>
 <body>
     <div class="card">
