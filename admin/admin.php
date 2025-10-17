@@ -71,12 +71,12 @@ try {
             $new_role = ($_POST['new_role'] ?? '') === 'organisateur' ? 'organisateur' : 'membre';
             if ($uid > 0 && $cid > 0) {
                 // Ensure membership exists
-                $stmtC = $conn->prepare('SELECT position FROM Adhérence WHERE idUtilisateur = ? AND idClub = ?');
+                $stmtC = $conn->prepare('SELECT position FROM Adherence WHERE idUtilisateur = ? AND idClub = ?');
                 $stmtC->bind_param('ii', $uid, $cid);
                 $stmtC->execute();
                 $res = $stmtC->get_result();
                 if ($res->num_rows > 0) {
-                    $stmtU = $conn->prepare('UPDATE Adhérence SET position = ? WHERE idUtilisateur = ? AND idClub = ?');
+                    $stmtU = $conn->prepare('UPDATE Adherence SET position = ? WHERE idUtilisateur = ? AND idClub = ?');
                     $stmtU->bind_param('sii', $new_role, $uid, $cid);
                     if ($stmtU->execute()) {
                         // Automatically update user role based on club position
