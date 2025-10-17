@@ -31,8 +31,21 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                         $_SESSION["user_role"] = $role;
                         $_SESSION["user_name"] = $nom . " " . $prenom;
 
-                        // Redirection directe vers organisateur/home.php
-                        header("Location: organisateur/home.php");
+                        // Redirection basée sur le rôle de l'utilisateur
+                        switch ($role) {
+                            case 'organisateur':
+                                header("Location: organisateur/home.php");
+                                break;
+                            case 'admin':
+                                header("Location: admin/admin.php");
+                                break;
+                            case 'utilisateur':
+                                header("Location: utilisateur/home.php");
+                                break;
+                            default:
+                                $login_error = "Rôle d'utilisateur non reconnu.";
+                                break;
+                        }
                         exit();
                     } else {
                         $login_error = "Mot de passe incorrect.";
