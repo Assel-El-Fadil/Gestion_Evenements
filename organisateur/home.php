@@ -2,7 +2,6 @@
 session_start();
 require "../database.php";
 
-// Vérifier si l'utilisateur est connecté
 if (!isset($_SESSION["user_id"])) {
     header("Location: ../signin.php");
     exit();
@@ -12,7 +11,6 @@ $current_user_id = $_SESSION["user_id"];
 $upcoming_events = get_upcoming_events(5);
 $user_clubs = get_user_clubs($current_user_id, 2);
 
-// Récupérer les informations complètes de l'utilisateur
 $conn = db_connect();
 $user_sql = "SELECT nom, prenom, annee, filiere FROM Utilisateur WHERE idUtilisateur = ?";
 $stmt = $conn->prepare($user_sql);
@@ -49,7 +47,6 @@ $user_department = $user ? $user['annee'] . ' - ' . $user['filiere'] : 'Étudian
             -moz-osx-font-smoothing: grayscale;
         }
 
-        /* Background layers */
         .bg-gradient {
             position: fixed;
             inset: 0;
@@ -57,7 +54,6 @@ $user_department = $user ? $user['annee'] . ' - ' . $user['filiere'] : 'Étudian
             z-index: -2;
         }
 
-        /* Animated orbs */
         .orb {
             position: fixed;
             border-radius: 50%;
@@ -92,7 +88,6 @@ $user_department = $user ? $user['annee'] . ' - ' . $user['filiere'] : 'Étudian
             }
         }
 
-        /* Dashboard Layout */
         .dashboard {
             display: flex;
             min-height: 100vh;
@@ -225,7 +220,6 @@ $user_department = $user ? $user['annee'] . ' - ' . $user['filiere'] : 'Étudian
             line-height: 1.5;
         }
 
-        /* Main Content */
         .main-content {
             flex: 1;
             padding: 1.5rem;
@@ -344,7 +338,6 @@ $user_department = $user ? $user['annee'] . ' - ' . $user['filiere'] : 'Étudian
             border-radius: 50%;
         }
 
-        /* Content Grid */
         .content-container {
             max-width: 80rem;
             margin: 0 auto;
@@ -454,7 +447,6 @@ $user_department = $user ? $user['annee'] . ' - ' . $user['filiere'] : 'Étudian
             line-height: 1.5;
         }
 
-        /* Event and Club Items */
         .events-list, .clubs-list {
             display: flex;
             flex-direction: column;
@@ -562,7 +554,6 @@ $user_department = $user ? $user['annee'] . ' - ' . $user['filiere'] : 'Étudian
             gap: 0.5rem;
         }
 
-        /* Badge System */
         .badge {
             display: inline-flex;
             align-items: center;
@@ -598,7 +589,6 @@ $user_department = $user ? $user['annee'] . ' - ' . $user['filiere'] : 'Étudian
             color: #a5b4fc;
         }
 
-        /* Button System */
         .btn {
             padding: 0.5rem 1rem;
             border-radius: 0.375rem;
@@ -676,7 +666,6 @@ $user_department = $user ? $user['annee'] . ' - ' . $user['filiere'] : 'Étudian
             height: 1rem;
         }
 
-        /* Responsive Design */
         @media (max-width: 1024px) {
             .content-grid {
                 grid-template-columns: 1fr;
@@ -900,14 +889,14 @@ $user_department = $user ? $user['annee'] . ' - ' . $user['filiere'] : 'Étudian
                                                         <line x1="8" y1="2" x2="8" y2="6"></line>
                                                         <line x1="3" y1="10" x2="21" y2="10"></line>
                                                     </svg>
-                                                    <span><?php echo date('j M Y', strtotime($event['date'])); ?></span>
+                                                    <span><?php echo date('j M Y', strtotime($event['dateEvenement'])); ?></span>
                                                 </div>
                                                 <div class="event-detail">
                                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                                         <circle cx="12" cy="12" r="10"></circle>
                                                         <polyline points="12 6 12 12 16 14"></polyline>
                                                     </svg>
-                                                    <span><?php echo date('H:i', strtotime($event['date'])); ?></span>
+                                                    <span><?php echo date('H:i', strtotime($event['dateEvenement'])); ?></span>
                                                 </div>
                                                 <div class="event-detail">
                                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -928,7 +917,6 @@ $user_department = $user ? $user['annee'] . ' - ' . $user['filiere'] : 'Étudian
                                                     </svg>
                                                     <span><?php echo $event['nbrParticipants']; ?> participants</span>
                                                 </div>
-                                                <button class="btn btn-secondary">Voir Détails</button>
                                             </div>
                                         </div>
                                     <?php endforeach; ?>
@@ -994,23 +982,7 @@ $user_department = $user ? $user['annee'] . ' - ' . $user['filiere'] : 'Étudian
                                                         <span><?php echo $event_count; ?> événements</span>
                                                     </div>
                                                 </div>
-                                                <div class="club-actions">
-                                                    <button class="btn-icon">
-                                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-                                                            <polyline points="22,6 12,13 2,6"></polyline>
-                                                        </svg>
-                                                    </button>
-                                                    <button class="btn-icon">
-                                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                                            <circle cx="12" cy="12" r="3"></circle>
-                                                            <path d="M12 1v6m0 6v6m8.66-13.66l-4.24 4.24M9.34 14.66l-4.24 4.24M23 12h-6m-6 0H5m16.66 8.66l-4.24-4.24M9.34 9.34L5.1 5.1"></path>
-                                                        </svg>
-                                                    </button>
-                                                </div>
                                             </div>
-                                            
-                                            <button class="btn btn-tertiary btn-full">Voir Détails du Club</button>
                                         </div>
                                     <?php endforeach; ?>
                                 <?php else: ?>

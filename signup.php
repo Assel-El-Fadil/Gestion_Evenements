@@ -9,20 +9,16 @@ use PHPMailer\PHPMailer\Exception;
 
 $conn = db_connect();
 
-// Start session for verification
 session_start();
 
-// Function to generate 6-digit verification code
 function generateVerificationCode() {
     return str_pad(rand(0, 999999), 6, '0', STR_PAD_LEFT);
 }
 
-// Function to send verification email
 function sendVerificationEmail($email, $code, $name) {
     $mail = new PHPMailer(true);
     
     try {
-        // Server settings
         $mail->isSMTP();
         $mail->Host = SMTP_HOST;
         $mail->SMTPAuth = true;
@@ -31,11 +27,9 @@ function sendVerificationEmail($email, $code, $name) {
         $mail->SMTPSecure = SMTP_ENCRYPTION === 'ssl' ? PHPMailer::ENCRYPTION_SMTPS : PHPMailer::ENCRYPTION_STARTTLS;
         $mail->Port = SMTP_PORT;
         
-        // Recipients
         $mail->setFrom(FROM_EMAIL, FROM_NAME);
         $mail->addAddress($email, $name);
         
-        // Content
         $mail->isHTML(true);
         $mail->Subject = 'Code de vérification - ClubConnect';
         $mail->Body = "
@@ -59,14 +53,12 @@ function sendVerificationEmail($email, $code, $name) {
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
     
-    // Handle verification code submission
     if (isset($_POST['verification_code'])) {
         $enteredCode = trim($_POST['verification_code']);
         $storedCode = $_SESSION['verification_code'] ?? '';
         $codeExpiry = $_SESSION['code_expiry'] ?? 0;
         
         if ($enteredCode === $storedCode && time() < $codeExpiry) {
-            // Code is valid, proceed with user registration
             $prenom = $_SESSION['temp_prenom'];
             $nom = $_SESSION['temp_nom'];
             $dateNaissance = $_SESSION['temp_dateNaissance'];
@@ -77,7 +69,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $mdp = $_SESSION['temp_mdp'];
             $role = "utilisateur";
             
-            // Clear temporary session data
             unset($_SESSION['verification_code'], $_SESSION['code_expiry'], $_SESSION['temp_prenom'], 
                   $_SESSION['temp_nom'], $_SESSION['temp_dateNaissance'], $_SESSION['temp_email'], 
                   $_SESSION['temp_apogee'], $_SESSION['temp_annee'], $_SESSION['temp_filiere'], $_SESSION['temp_mdp']);
@@ -85,7 +76,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $verification_error = "Code de vérification invalide ou expiré.";
         }
     } else {
-        // Handle initial form submission
         $prenom = htmlspecialchars(trim($_POST['firstName']));
         $nom = htmlspecialchars(trim($_POST['lastName']));
         $dateNaissance = $_POST['dateOfBirth'];
@@ -97,9 +87,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $role = "utilisateur";
     }
 
-    // Only validate and check database if not in verification mode
     if (!isset($_POST['verification_code'])) {
-        // 🔒 VALIDATION DATE DE NAISSANCE (17-50 ans)
         $today = new DateTime();
         $birthDate = new DateTime($dateNaissance);
         $age = $today->diff($birthDate)->y;
@@ -110,7 +98,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             exit;
         }
 
-        // 🔒 VALIDATION NUMERO APOGEE (exactement 8 chiffres)
         if (!preg_match('/^\d{8}$/', $apogee)) {
             echo "<script>alert('Le numéro Apogée doit contenir exactement 8 chiffres.'); window.history.back();</script>";
             db_close();
@@ -130,11 +117,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         }
         $check->close();
         
-        // Generate verification code and send email
         $verificationCode = generateVerificationCode();
-        $codeExpiry = time() + (CODE_EXPIRY_MINUTES * 60); // Configurable expiry time
+        $codeExpiry = time() + (CODE_EXPIRY_MINUTES * 60);
         
-        // Store verification data in session
         $_SESSION['verification_code'] = $verificationCode;
         $_SESSION['code_expiry'] = $codeExpiry;
         $_SESSION['temp_prenom'] = $prenom;
@@ -146,7 +131,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $_SESSION['temp_filiere'] = $filiere;
         $_SESSION['temp_mdp'] = $mdp;
         
-        // Send verification email
         if (sendVerificationEmail($email, $verificationCode, $prenom . ' ' . $nom)) {
             $verification_sent = true;
         } else {
@@ -156,7 +140,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         }
     }
 
-    // Only insert into database if verification is complete
     if (isset($_POST['verification_code']) && !isset($verification_error)) {
         $stmt = $conn->prepare("
             INSERT INTO Utilisateur (nom, prenom, dateNaissance, annee, filiere, email, mdp, apogee, role)
@@ -170,15 +153,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $stmt->bind_param("sssssssss", $nom, $prenom, $dateNaissance, $annee, $filiere, $email, $mdp, $apogee, $role);
 
         if ($stmt->execute()) {
-            // Récupérer l'ID du nouvel utilisateur
             $new_user_id = $stmt->insert_id;
             
-            // Démarrer la session pour le nouvel utilisateur
             $_SESSION["user_id"] = $new_user_id;
             $_SESSION["user_role"] = $role;
             $_SESSION["user_name"] = $prenom . " " . $nom;
             
-            // Rediriger vers la page d'accueil
             echo "<script>
                 alert('Inscription réussie ! Bienvenue $prenom.');
                 window.location.href = 'utilisateur/home.php'; 
@@ -219,7 +199,6 @@ db_close();
             overflow-x: hidden;
         }
 
-        /* Background layers */
         .bg-gradient {
             position: absolute;
             inset: 0;
@@ -227,7 +206,6 @@ db_close();
             z-index: 0;
         }
 
-        /* Animated orbs */
         .orb {
             position: absolute;
             border-radius: 50%;
@@ -268,7 +246,6 @@ db_close();
             z-index: 10;
         }
 
-        /* Header */
         .header {
             margin-bottom: 2rem;
             text-align: center;
@@ -286,7 +263,6 @@ db_close();
             color: #9ca3af;
         }
 
-        /* Main card */
         .card {
             background-color: rgba(0, 0, 0, 0.3);
             backdrop-filter: blur(24px);
@@ -312,7 +288,6 @@ db_close();
             color: rgba(209, 213, 219, 0.8);
         }
 
-        /* Form */
         form {
             display: flex;
             flex-direction: column;
@@ -374,19 +349,16 @@ db_close();
             color: #ffffff;
         }
 
-        /* Error messages */
         .error {
             font-size: 0.75rem;
             color: #f87171;
             margin-top: -0.25rem;
         }
 
-        /* Hidden field */
         .hidden {
             display: none;
         }
 
-        /* Submit button */
         button[type="submit"] {
             width: 100%;
             padding: 0.875rem;
@@ -411,7 +383,6 @@ db_close();
             transform: scale(0.98);
         }
 
-        /* Login link */
         .login-link {
             text-align: center;
             margin-top: 1.5rem;
@@ -431,7 +402,6 @@ db_close();
             text-underline-offset: 4px;
         }
 
-        /* Verification form styles */
         .resend-section {
             text-align: center;
             margin-top: 1.5rem;
@@ -466,7 +436,6 @@ db_close();
             cursor: not-allowed;
         }
 
-        /* Verification code input */
         #verification_code {
             text-align: center;
             font-size: 1.5rem;
@@ -474,13 +443,11 @@ db_close();
             font-weight: 600;
         }
 
-        /* Date input styling */
         input[type="date"]::-webkit-calendar-picker-indicator {
             filter: invert(1);
             cursor: pointer;
         }
 
-        /* Responsive */
         @media (max-width: 640px) {
             .form-row {
                 grid-template-columns: 1fr;
@@ -526,7 +493,6 @@ db_close();
             </div>
 
             <?php if (isset($verification_sent)): ?>
-                <!-- Verification Form -->
                 <form id="verificationForm" method="POST" action="" novalidate>
                     <div class="form-group">
                         <label for="verification_code">Code de vérification</label>
@@ -554,7 +520,6 @@ db_close();
                     <button type="button" id="resendCode" class="resend-btn">Renvoyer le code</button>
                 </div>
             <?php else: ?>
-                <!-- Signup Form -->
                 <form id="signupForm" method="POST" action="" novalidate>
                 <div class="form-row">
                     <div class="form-group">
@@ -677,14 +642,12 @@ db_close();
     </div>
 
     <script>
-        // Fonction de validation de la date de naissance
         function validateBirthDate(dateString) {
             const today = new Date();
             const birthDate = new Date(dateString);
             const age = today.getFullYear() - birthDate.getFullYear();
             const monthDiff = today.getMonth() - birthDate.getMonth();
             
-            // Ajuster l'âge si l'anniversaire n'est pas encore arrivé cette année
             const adjustedAge = monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate()) 
                 ? age - 1 
                 : age;
@@ -692,7 +655,6 @@ db_close();
             return adjustedAge >= 17 && adjustedAge <= 50;
         }
 
-        // Fonction de validation du numéro Apogée
         function validateApogee(apogee) {
             return /^\d{8}$/.test(apogee);
         }
@@ -723,15 +685,12 @@ db_close();
             });
         });
 
-        // 🔒 Validation en temps réel pour le champ Apogée
         document.getElementById('studentId').addEventListener('input', function(e) {
             const value = e.target.value;
             const errorElement = document.getElementById('studentIdError');
             
-            // Autoriser uniquement les chiffres
             e.target.value = value.replace(/[^\d]/g, '');
             
-            // Limiter à 8 caractères
             if (e.target.value.length > 8) {
                 e.target.value = e.target.value.slice(0, 8);
             }
@@ -739,7 +698,6 @@ db_close();
             errorElement.textContent = '';
         });
 
-        // Signup form validation
         if (document.getElementById('signupForm')) {
             document.getElementById('signupForm').addEventListener('submit', function(e) {
                 let isValid = true;
@@ -771,7 +729,6 @@ db_close();
                     document.getElementById('dateOfBirthError').textContent = 'La date de naissance est requise';
                     isValid = false;
                 } else {
-                    // 🔒 NOUVELLE VALIDATION DATE DE NAISSANCE
                     if (!validateBirthDate(dateOfBirth)) {
                         document.getElementById('dateOfBirthError').textContent = 'L\'âge doit être compris entre 17 et 50 ans';
                         isValid = false;
@@ -793,7 +750,6 @@ db_close();
                     document.getElementById('studentIdError').textContent = 'L\'Apogée est requis';
                     isValid = false;
                 } else {
-                    // 🔒 NOUVELLE VALIDATION NUMERO APOGEE
                     if (!validateApogee(studentId)) {
                         document.getElementById('studentIdError').textContent = 'Le numéro Apogée doit contenir exactement 8 chiffres';
                         isValid = false;
@@ -825,7 +781,6 @@ db_close();
             });
         }
 
-        // Verification form validation
         if (document.getElementById('verificationForm')) {
             document.getElementById('verificationForm').addEventListener('submit', function(e) {
                 const verificationCode = document.getElementById('verification_code').value.trim();
@@ -843,9 +798,8 @@ db_close();
             });
         }
 
-        // Resend code functionality
         if (document.getElementById('resendCode')) {
-            let resendCooldown = <?php echo RESEND_COOLDOWN_SECONDS; ?>; // Configurable cooldown
+            let resendCooldown = <?php echo RESEND_COOLDOWN_SECONDS; ?>;
             const resendBtn = document.getElementById('resendCode');
             
             function updateResendButton() {
@@ -860,12 +814,10 @@ db_close();
                 }
             }
             
-            // Start cooldown on page load
             updateResendButton();
             
             resendBtn.addEventListener('click', function() {
                 if (resendCooldown <= 0) {
-                    // Reload page to resend code
                     window.location.reload();
                 }
             });

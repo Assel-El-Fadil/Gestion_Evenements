@@ -3,7 +3,6 @@
 session_start();
 require_once '../database.php';
 
-// Vérifier si l'utilisateur est connecté
 if (!isset($_SESSION["user_id"])) {
     header("Location: ../signin.php");
     exit();
@@ -13,7 +12,6 @@ $user_id = $_SESSION['user_id'];
 
 $conn = db_connect();
 
-// Récupérer les informations de l'utilisateur
 $user_sql = "SELECT nom, prenom, annee, filiere FROM Utilisateur WHERE idUtilisateur = ?";
 $stmt = $conn->prepare($user_sql);
 $stmt->bind_param("i", $user_id);
@@ -32,14 +30,13 @@ $user_department = $user['annee'] . ' - ' . $user['filiere'];
 
 $stats = [];
 $search_query = trim($_GET['q'] ?? '');
+$selected_club = trim($_GET['club'] ?? '');
 
-// Handle event registration
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
     if ($action === 'register' && $user_id) {
         $event_id = intval($_POST['event_id'] ?? 0);
         if ($event_id > 0) {
-            // Check if already registered
             $stmt = $conn->prepare('SELECT 1 FROM Inscription WHERE idUtilisateur = ? AND idEvenement = ?');
             $stmt->bind_param('ii', $user_id, $event_id);
             $stmt->execute();
@@ -49,8 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($already) {
                 $error_message = "Vous êtes déjà inscrit à cet événement.";
             } else {
-                // Get capacity and participants
-                $stmt = $conn->prepare('SELECT capacité, nbrParticipants FROM Evenement WHERE idEvenement = ?');
+                $stmt = $conn->prepare('SELECT capacite, nbrParticipants FROM Evenement WHERE idEvenement = ?');
                 $stmt->bind_param('i', $event_id);
                 $stmt->execute();
                 $res = $stmt->get_result();
@@ -59,10 +55,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 if (!$evt) {
                     $error_message = "Événement introuvable.";
-                } else if (intval($evt['nbrParticipants']) >= intval($evt['capacité'])) {
+                } else if (intval($evt['nbrParticipants']) >= intval($evt['capacite'])) {
                     $error_message = "La capacité de l'événement a été atteinte.";
                 } else {
-                    // Register and increment
                     $stmt = $conn->prepare('INSERT INTO Inscription (idUtilisateur, idEvenement) VALUES (?, ?)');
                     $stmt->bind_param('ii', $user_id, $event_id);
                     if ($stmt->execute()) {
@@ -92,23 +87,39 @@ $active_clubs_sql = "SELECT COUNT(DISTINCT idClub) as count FROM Evenement";
 $result = $conn->query($active_clubs_sql);
 $stats['active_clubs'] = $result->fetch_assoc()['count'];
 
-$categories_sql = "SELECT COUNT(DISTINCT titre) as count FROM Evenement";
-$result = $conn->query($categories_sql);
-$stats['categories'] = $result->fetch_assoc()['count'];
+$clubs_count_sql = "SELECT COUNT(DISTINCT c.idClub) as count FROM Club c 
+                   JOIN Evenement e ON c.idClub = e.idClub 
+                   WHERE e.dateEvenement >= CURDATE()";
+$result = $conn->query($clubs_count_sql);
+$stats['clubs'] = $result->fetch_assoc()['count'];
 
 $events_sql = "SELECT e.*, c.nom as club_nom 
                FROM Evenement e 
                JOIN Club c ON e.idClub = c.idClub 
                WHERE e.dateEvenement >= CURDATE()";
-if ($search_query !== '') {
-    $events_sql .= " AND (e.titre LIKE ? OR c.nom LIKE ? OR e.lieu LIKE ?)";
-}
-$events_sql .= " ORDER BY e.dateEvenement ASC";
+
+$params = [];
+$param_types = "";
 
 if ($search_query !== '') {
-    $like = "%" . $search_query . "%";
+    $events_sql .= " AND (e.titre LIKE ? OR c.nom LIKE ? OR e.lieu LIKE ?)";
+    $params[] = "%" . $search_query . "%";
+    $params[] = "%" . $search_query . "%";
+    $params[] = "%" . $search_query . "%";
+    $param_types .= "sss";
+}
+
+if ($selected_club !== '') {
+    $events_sql .= " AND c.idClub = ?";
+    $params[] = intval($selected_club);
+    $param_types .= "i";
+}
+
+$events_sql .= " ORDER BY e.dateEvenement ASC";
+
+if (!empty($params)) {
     $stmtEv = $conn->prepare($events_sql);
-    $stmtEv->bind_param('sss', $like, $like, $like);
+    $stmtEv->bind_param($param_types, ...$params);
     $stmtEv->execute();
     $events_result = $stmtEv->get_result();
 } else {
@@ -116,7 +127,18 @@ if ($search_query !== '') {
 }
 $events_count = $events_result ? $events_result->num_rows : 0;
 
-// Preload user's registered events to disable the button
+$clubs_sql = "SELECT DISTINCT c.idClub, c.nom FROM Club c 
+              JOIN Evenement e ON c.idClub = e.idClub 
+              WHERE e.dateEvenement >= CURDATE() 
+              ORDER BY c.nom ASC";
+$clubs_result = $conn->query($clubs_sql);
+$clubs = [];
+if ($clubs_result) {
+    while ($club = $clubs_result->fetch_assoc()) {
+        $clubs[] = $club;
+    }
+}
+
 $user_event_ids = [];
 if ($user_id) {
     $reg = $conn->prepare('SELECT idEvenement FROM Inscription WHERE idUtilisateur = ?');
@@ -153,7 +175,6 @@ db_close();
             -moz-osx-font-smoothing: grayscale;
         }
 
-        /* Background layers */
         .bg-gradient {
             position: fixed;
             inset: 0;
@@ -161,7 +182,6 @@ db_close();
             z-index: -2;
         }
 
-        /* Animated orbs */
         .orb {
             position: fixed;
             border-radius: 50%;
@@ -725,7 +745,6 @@ db_close();
                 display: none;
             }
         }
-        /* Canonical Sidebar Overrides */
         .sidebar {
             width: 256px;
             height: 100vh;
@@ -906,30 +925,49 @@ db_close();
 
                     <div class="stat-card">
                         <div class="stat-header">
-                            <h3 class="stat-title">Types d'Événements</h3>
+                            <h3 class="stat-title">Clubs Organisateurs</h3>
                             <div class="stat-icon green">
                                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
                                 </svg>
                             </div>
                         </div>
-                        <p class="stat-value"><?= $stats['categories'] ?></p>
-                        <p class="stat-label">Événements différents</p>
+                        <p class="stat-value"><?= $stats['clubs'] ?></p>
+                        <p class="stat-label">Organisent des événements</p>
                     </div>
                 </div>
 
                 <div class="category-filters">
-                    <button class="category-btn active">Tous les Événements</button>
-                    <button class="category-btn">Atelier</button>
-                    <button class="category-btn">Sports</button>
-                    <button class="category-btn">Exposition</button>
-                    <button class="category-btn">Concert</button>
-                    <button class="category-btn">Social</button>
+                    <a href="?<?= http_build_query(array_merge($_GET, ['club' => ''])) ?>" 
+                       class="category-btn <?= empty($selected_club) ? 'active' : '' ?>">
+                        Tous les Événements
+                    </a>
+                    <?php foreach ($clubs as $club): ?>
+                        <a href="?<?= http_build_query(array_merge($_GET, ['club' => $club['idClub']])) ?>" 
+                           class="category-btn <?= $selected_club == $club['idClub'] ? 'active' : '' ?>">
+                            <?= htmlspecialchars($club['nom']) ?>
+                        </a>
+                    <?php endforeach; ?>
                 </div>
 
                 <div>
                     <div class="events-header">
-                        <h2>Tous les Événements</h2>
+                        <h2>
+                            <?php if (!empty($selected_club)): ?>
+                                <?php 
+                                $selected_club_name = '';
+                                foreach ($clubs as $club) {
+                                    if ($club['idClub'] == $selected_club) {
+                                        $selected_club_name = $club['nom'];
+                                        break;
+                                    }
+                                }
+                                echo htmlspecialchars($selected_club_name ?: 'Club sélectionné');
+                                ?>
+                            <?php else: ?>
+                                Tous les Événements
+                            <?php endif; ?>
+                        </h2>
                         <p class="events-count"><?= $events_count ?> événements trouvés</p>
                     </div>
 
@@ -967,10 +1005,10 @@ db_close();
                                     }
                                 }
                                 
-                                $date = date('M j, Y', strtotime($event['date']));
+                                $date = date('M j, Y', strtotime($event['dateEvenement']));
                                 
                                 $nbrParticipants = intval($event['nbrParticipants'] ?? 0);
-                                $capacite = intval($event['capacité'] ?? 0);
+                                $capacite = intval($event['capacite'] ?? 0);
                                 ?>
                                 
                                 <div class="event-card">

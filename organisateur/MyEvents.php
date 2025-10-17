@@ -2,13 +2,11 @@
 session_start();
 require_once '../database.php';
 
-// Vérifier si l'utilisateur est connecté
 if (!isset($_SESSION["user_id"])) {
     header("Location: ../signin.php");
     exit();
 }
 
-// Get user ID from session
 $user_id = $_SESSION['user_id'] ?? 1;
 $search_query = trim($_GET['q'] ?? '');
 
@@ -17,7 +15,6 @@ $search_query = trim($_GET['q'] ?? '');
 
 $user_id = $_SESSION['user_id'];
 
-// Récupérer les informations de l'utilisateur
 $conn = db_connect();
 $user_sql = "SELECT nom, prenom, annee, filiere FROM Utilisateur WHERE idUtilisateur = ?";
 $stmt_user = $conn->prepare($user_sql);
@@ -35,11 +32,9 @@ $user_name = $user['prenom'] . ' ' . $user['nom'];
 $user_initials = strtoupper(substr($user['prenom'], 0, 1) . substr($user['nom'], 0, 1));
 $user_department = $user['annee'] . ' - ' . $user['filiere'];
 
-// Fetch events from database
 try {
     $conn = db_connect();
     
-    // Counters for events where the user is registered
     $total_sql = "SELECT COUNT(*) AS total
                   FROM Inscription i
                   JOIN Evenement e ON e.idEvenement = i.idEvenement
@@ -76,7 +71,6 @@ try {
     $past_count = (int)($past_row['cnt'] ?? 0);
     $stmt_ps->close();
 
-    // Load only events the user is registered for
     $sql = "SELECT e.*, c.nom as club_nom
             FROM Inscription i
             JOIN Evenement e ON e.idEvenement = i.idEvenement
@@ -99,20 +93,19 @@ try {
     
     $events = [];
     while ($event = $result->fetch_assoc()) {
-        $event_date = $event['date'];
+        $event_date = $event['dateEvenement'];
         $event['is_upcoming'] = $event_date >= date('Y-m-d');
         $event['statut'] = $event['is_upcoming'] ? 'upcoming' : 'past';
         $event['id'] = $event['idEvenement'];
         $event['nom'] = $event['titre'];
-        $event['date_evenement'] = $event['date'];
+        $event['date_evenement'] = $event['dateEvenement'];
         $event['participants_inscrits'] = $event['nbrParticipants'];
-        $event['capacite_max'] = $event['capacité'];
+        $event['capacite_max'] = $event['capacite'];
         $event['club_id'] = $event['idClub'];
-        unset($event['idEvenement'], $event['titre'], $event['date'], $event['nbrParticipants'], $event['capacité'], $event['idClub']);
+        unset($event['idEvenement'], $event['titre'], $event['dateEvenement'], $event['nbrParticipants'], $event['capacite'], $event['idClub']);
         $events[] = $event;
     }
     
-    // Compteurs pour l'utilisateur connecté
     $total_count = count($events);
     $upcoming_count = count(array_filter($events, function($e) { return $e['is_upcoming']; }));
     $past_count = $total_count - $upcoming_count;
@@ -126,7 +119,6 @@ try {
     $total_count = $upcoming_count = $past_count = 0;
 }
 
-// Function to get event details by ID
 function getEventDetails($event_id) {
     try {
         $conn = db_connect();
@@ -136,16 +128,16 @@ function getEventDetails($event_id) {
         $result = $stmt->get_result();
         
         if ($event = $result->fetch_assoc()) {
-            $event_date = $event['date'];
+            $event_date = $event['dateEvenement'];
             $event['is_upcoming'] = $event_date >= date('Y-m-d');
             $event['statut'] = $event['is_upcoming'] ? 'upcoming' : 'past';
             $event['id'] = $event['idEvenement'];
             $event['nom'] = $event['titre'];
-            $event['date_evenement'] = $event['date'];
+            $event['date_evenement'] = $event['dateEvenement'];
             $event['participants_inscrits'] = $event['nbrParticipants'];
-            $event['capacite_max'] = $event['capacité'];
+            $event['capacite_max'] = $event['capacite'];
             $event['club_id'] = $event['idClub'];
-            unset($event['idEvenement'], $event['titre'], $event['date'], $event['nbrParticipants'], $event['capacité'], $event['idClub']);
+            unset($event['idEvenement'], $event['titre'], $event['dateEvenement'], $event['nbrParticipants'], $event['capacite'], $event['idClub']);
         }
         
         $stmt->close();
@@ -157,7 +149,6 @@ function getEventDetails($event_id) {
     }
 }
 
-// Handle event details request
 if (isset($_GET['event_id'])) {
     $event_id = intval($_GET['event_id']);
     $event_details = getEventDetails($event_id);
@@ -193,7 +184,6 @@ if (isset($_GET['event_id'])) {
             -moz-osx-font-smoothing: grayscale;
         }
 
-        /* Background layers */
         .bg-gradient {
             position: fixed;
             inset: 0;
@@ -201,7 +191,6 @@ if (isset($_GET['event_id'])) {
             z-index: -2;
         }
 
-        /* Animated orbs */
         .orb {
             position: fixed;
             border-radius: 50%;
@@ -248,7 +237,6 @@ if (isset($_GET['event_id'])) {
             height: 100vh;
         }
 
-        /* Sidebar Styles */
         .sidebar {
             width: 256px;
             height: 100vh;
@@ -375,7 +363,6 @@ if (isset($_GET['event_id'])) {
             line-height: 1.5;
         }
 
-        /* Main Content */
         .main-content {
             flex: 1;
             overflow-y: auto;
@@ -481,7 +468,6 @@ if (isset($_GET['event_id'])) {
             box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
         }
 
-        /* Stats Cards */
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -559,14 +545,12 @@ if (isset($_GET['event_id'])) {
             color: #4ade80;
         }
 
-        /* Content Area */
         .content-area {
             max-width: 1280px;
             margin: 0 auto;
             padding: 32px;
         }
 
-        /* Tabs */
         .tabs-list {
             display: flex;
             gap: 4px;
@@ -607,7 +591,6 @@ if (isset($_GET['event_id'])) {
             display: block;
         }
 
-        /* Events Grid */
         .events-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
@@ -620,7 +603,6 @@ if (isset($_GET['event_id'])) {
             }
         }
 
-        /* Event Card */
         .event-card {
             padding: 24px;
             background: rgba(255, 255, 255, 0.05);
@@ -766,7 +748,6 @@ if (isset($_GET['event_id'])) {
     <div class="orb orb-1"></div>
     <div class="orb orb-2"></div>
     <div class="app-container">
-        <!-- Sidebar -->
         <aside class="sidebar">
             <div class="sidebar-header">
                 <h1 class="sidebar-title">ClubConnect</h1>
@@ -842,7 +823,6 @@ if (isset($_GET['event_id'])) {
             </div>
         </aside>
 
-        <!-- Main Content -->
         <div class="main-content">
             <div class="header">
                 <div class="header-content">
@@ -860,12 +840,6 @@ if (isset($_GET['event_id'])) {
                                     <input type="text" name="q" class="search-input" value="<?php echo htmlspecialchars($search_query); ?>" placeholder="Rechercher des événements, clubs...">
                                 </form>
                             </div>
-                            <button class="notification-btn">
-                                <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
-                                </svg>
-                                <span class="notification-badge"></span>
-                            </button>
                         </div>
                     </div>
 
@@ -918,7 +892,6 @@ if (isset($_GET['event_id'])) {
                     <button class="tab-trigger" onclick="switchTab('all')">Tous (<?php echo $total_count; ?>)</button>
                 </div>
 
-                <!-- Upcoming Tab -->
                 <div id="tab-upcoming" class="tab-content active">
                     <div class="events-grid">
                         <?php
@@ -937,7 +910,6 @@ if (isset($_GET['event_id'])) {
                     </div>
                 </div>
 
-                <!-- Past Tab -->
                 <div id="tab-past" class="tab-content">
                     <div class="events-grid">
                         <?php
@@ -956,7 +928,6 @@ if (isset($_GET['event_id'])) {
                     </div>
                 </div>
 
-                <!-- All Tab -->
                 <div id="tab-all" class="tab-content">
                     <div class="events-grid">
                         <?php
@@ -1044,7 +1015,6 @@ if (isset($_GET['event_id'])) {
         .modal-body { padding: 20px; }
         .muted { color:#9ca3af; font-size:12px; }
     </style>
-    <!-- Event Details Modal -->
     <div id="eventModal" class="modal-backdrop" onclick="if(event.target===this) toggleModal(false)">
         <div class="modal">
             <div class="modal-header">
@@ -1066,7 +1036,7 @@ function createEventCardHTML($event) {
     } catch (Exception $ex) {
         $formattedDate = htmlspecialchars($event['date_evenement'] ?? '');
     }
-    $formattedTime = '2:00 PM'; // You can extract this from your database if available
+    $formattedTime = '2:00 PM';
     
     $badge_class = $event['statut'] === 'upcoming' ? 'workshop' : 'seminar';
     

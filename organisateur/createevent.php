@@ -2,7 +2,6 @@
 session_start();
 require "../database.php";
 
-//Vérifier si l'utilisateur est connecté
 if (!isset($_SESSION["user_id"])) {
     header("Location: ../signin.php");
     exit();
@@ -10,7 +9,6 @@ if (!isset($_SESSION["user_id"])) {
 
 $current_user_id = $_SESSION["user_id"];
 
-// Récupérer les informations de l'utilisateur
 $conn = db_connect();
 $user_sql = "SELECT nom, prenom, annee, filiere FROM Utilisateur WHERE idUtilisateur = ?";
 $stmt_user = $conn->prepare($user_sql);
@@ -42,14 +40,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $date = $conn->real_escape_string($_POST['event_date'] ?? '');
         $lieu = $conn->real_escape_string($_POST['event_location'] ?? '');
         $capacite = intval($_POST['event_capacity'] ?? 0);
-        $categorie = $conn->real_escape_string($_POST['event_category'] ?? '');
         $idClub = intval($_POST['event_club'] ?? 1);
         
-        if (empty($titre) || empty($description) || empty($date) || empty($lieu) || empty($categorie)) {
+        if (empty($titre) || empty($description) || empty($date) || empty($lieu)) {
             throw new Exception("Veuillez remplir tous les champs obligatoires.");
         }
         
-        // Handle image upload
         $photo_path = '';
         if (isset($_FILES['event_photo']) && $_FILES['event_photo']['error'] === UPLOAD_ERR_OK) {
             $upload_dir = '../images/';
@@ -65,11 +61,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             
             $file_size = $_FILES['event_photo']['size'];
-            if ($file_size > 10 * 1024 * 1024) { // 10MB limit
+            if ($file_size > 10 * 1024 * 1024) {
                 throw new Exception("L'image est trop volumineuse. Taille maximale: 10MB.");
             }
             
-            // Generate unique filename
             $unique_filename = 'event_' . time() . '_' . uniqid() . '.' . $file_extension;
             $upload_path = $upload_dir . $unique_filename;
             
@@ -117,7 +112,6 @@ function getFormattedDate($dateField) {
     return 'Sélectionner une date';
 }
 
-// Récupérer les clubs de l'utilisateur
 $user_clubs = get_user_clubs($current_user_id, 10);
 ?>
 
@@ -143,7 +137,6 @@ $user_clubs = get_user_clubs($current_user_id, 10);
             -moz-osx-font-smoothing: grayscale;
         }
 
-        /* Background layers */
         .bg-gradient {
             position: fixed;
             inset: 0;
@@ -151,7 +144,6 @@ $user_clubs = get_user_clubs($current_user_id, 10);
             z-index: -2;
         }
 
-        /* Animated orbs */
         .orb {
             position: fixed;
             border-radius: 50%;
@@ -186,7 +178,6 @@ $user_clubs = get_user_clubs($current_user_id, 10);
             }
         }
 
-        /* Dashboard Layout */
         .dashboard {
             display: flex;
             min-height: 100vh;
@@ -319,7 +310,6 @@ $user_clubs = get_user_clubs($current_user_id, 10);
             line-height: 1.5;
         }
 
-        /* Main Content */
         .main-content {
             flex: 1;
             padding: 1.5rem;
@@ -365,7 +355,6 @@ $user_clubs = get_user_clubs($current_user_id, 10);
             line-height: 1.5;
         }
 
-        /* Messages */
         .success-message {
             background: rgba(34, 197, 94, 0.2);
             border: 1px solid rgba(34, 197, 94, 0.3);
@@ -388,7 +377,6 @@ $user_clubs = get_user_clubs($current_user_id, 10);
             font-weight: 500;
         }
 
-        /* Form Grid */
         .form-grid {
             display: grid;
             grid-template-columns: 1fr 400px;
@@ -503,7 +491,6 @@ $user_clubs = get_user_clubs($current_user_id, 10);
             box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.3);
         }
 
-        /* File Upload */
         .file-upload {
             border: 2px dashed rgba(255, 255, 255, 0.3);
             border-radius: 0.75rem;
@@ -563,7 +550,6 @@ $user_clubs = get_user_clubs($current_user_id, 10);
             border-radius: 0.5rem;
         }
 
-        /* Preview Column */
         .preview-column {
             display: flex;
             flex-direction: column;
@@ -639,7 +625,6 @@ $user_clubs = get_user_clubs($current_user_id, 10);
             color: #6b7280;
         }
 
-        /* Button Group */
         .button-group {
             display: flex;
             flex-direction: column;
@@ -679,13 +664,11 @@ $user_clubs = get_user_clubs($current_user_id, 10);
             background: rgba(255, 255, 255, 0.1);
         }
 
-        /* Date input styling */
         input[type="date"]::-webkit-calendar-picker-indicator {
             filter: invert(1);
             cursor: pointer;
         }
 
-        /* Responsive Design */
         @media (max-width: 1024px) {
             .form-grid {
                 grid-template-columns: 1fr;
@@ -858,24 +841,10 @@ $user_clubs = get_user_clubs($current_user_id, 10);
                                    value="<?php echo getFormValue('event_location'); ?>" required>
                         </div>
 
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Capacité Maximale</label>
-                                <input type="number" name="event_capacity" placeholder="50"
-                                       value="<?php echo getFormValue('event_capacity'); ?>">
-                            </div>
-                            <div class="form-group">
-                                <label>Catégorie *</label>
-                                <select name="event_category" required>
-                                    <option value="">Sélectionnez une catégorie</option>
-                                    <option value="workshop" <?php echo (getFormValue('event_category') === 'workshop') ? 'selected' : ''; ?>>Atelier</option>
-                                    <option value="seminar" <?php echo (getFormValue('event_category') === 'seminar') ? 'selected' : ''; ?>>Séminaire</option>
-                                    <option value="networking" <?php echo (getFormValue('event_category') === 'networking') ? 'selected' : ''; ?>>Réseautage</option>
-                                    <option value="social" <?php echo (getFormValue('event_category') === 'social') ? 'selected' : ''; ?>>Social</option>
-                                    <option value="competition" <?php echo (getFormValue('event_category') === 'competition') ? 'selected' : ''; ?>>Compétition</option>
-                                    <option value="meeting" <?php echo (getFormValue('event_category') === 'meeting') ? 'selected' : ''; ?>>Réunion</option>
-                                </select>
-                            </div>
+                        <div class="form-card">
+                            <label>Capacité Maximale</label>
+                            <input type="number" name="event_capacity" placeholder="50"
+                                   value="<?php echo getFormValue('event_capacity'); ?>">
                         </div>
 
                         <div class="form-card">

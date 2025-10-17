@@ -2,18 +2,15 @@
 session_start();
 require_once '../database.php';
 
-// Vérifier si l'utilisateur est connecté
 if (!isset($_SESSION["user_id"])) {
     header("Location: ../signin.php");
     exit();
 }
 
-// Get user ID from session
 $user_id = $_SESSION['user_id'] ?? 1;
 $search_query = trim($_GET['q'] ?? '');
 
 
-// Vérifier si l'utilisateur est connecté
 if (!isset($_SESSION["user_id"])) {
     header("Location: ../signin.php");
     exit();
@@ -21,7 +18,6 @@ if (!isset($_SESSION["user_id"])) {
 
 $user_id = $_SESSION['user_id'];
 
-// Récupérer les informations de l'utilisateur
 $conn = db_connect();
 $user_sql = "SELECT nom, prenom, annee, filiere FROM Utilisateur WHERE idUtilisateur = ?";
 $stmt_user = $conn->prepare($user_sql);
@@ -39,7 +35,6 @@ $user_name = $user['prenom'] . ' ' . $user['nom'];
 $user_initials = strtoupper(substr($user['prenom'], 0, 1) . substr($user['nom'], 0, 1));
 $user_department = $user['annee'] . ' - ' . $user['filiere'];
 
-// Handle join request
 $join_success = false;
 try {
     $conn = db_connect();
@@ -47,7 +42,6 @@ try {
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['join_club'], $_POST['club_id'])) {
         $club_id_join = intval($_POST['club_id']);
 
-        // Avoid duplicate pending requests
         $check = $conn->prepare("SELECT 1 FROM Requete WHERE idUtilisateur = ? AND idClub = ? LIMIT 1");
         $check->bind_param('ii', $user_id, $club_id_join);
         $check->execute();
@@ -63,13 +57,11 @@ try {
         $join_success = true;
     }
 
-    // 1) Top counters
     $total_sql = "SELECT COUNT(*) AS total FROM Club";
     $total_res = $conn->query($total_sql);
     $total_row = $total_res ? $total_res->fetch_assoc() : ['total' => 0];
     $total_clubs = (int)($total_row['total'] ?? 0);
 
-    // Managing = clubs where current user has position 'organisateur'
     $stmt = $conn->prepare("SELECT COUNT(*) AS cnt FROM Adherence WHERE idUtilisateur = ? AND position = 'organisateur'");
     $stmt->bind_param('i', $user_id);
     $stmt->execute();
@@ -78,7 +70,6 @@ try {
     $managing_clubs = (int)($row['cnt'] ?? 0);
     $stmt->close();
 
-    // Member Of = clubs where current user has position 'membre'
     $stmt = $conn->prepare("SELECT COUNT(*) AS cnt FROM Adherence WHERE idUtilisateur = ? AND position = 'membre'");
     $stmt->bind_param('i', $user_id);
     $stmt->execute();
@@ -87,7 +78,6 @@ try {
     $member_of_clubs = (int)($row['cnt'] ?? 0);
     $stmt->close();
 
-    // 2) List clubs (optionally filtered) with user's role and event count
     $sql = "SELECT c.*, a.position, COUNT(e.idEvenement) AS event_count
             FROM Club c
             LEFT JOIN Adherence a ON a.idClub = c.idClub AND a.idUtilisateur = ?
@@ -115,7 +105,6 @@ try {
         $clubs[] = $club;
     }
 
-    // Count of user's clubs for tabs
     $user_clubs_count = count(array_filter($clubs, function($c){ return !empty($c['position']); }));
 
     $stmt->close();
@@ -127,7 +116,6 @@ try {
     $total_clubs = $managing_clubs = $member_of_clubs = 0;
 }
 
-// Function to get club details by ID
 function getClubDetails($club_id) {
     try {
         $conn = db_connect();
@@ -151,7 +139,6 @@ function getClubDetails($club_id) {
     }
 }
 
-// Function to get club events by club ID
 function getClubEvents($club_id) {
     try {
         $conn = db_connect();
@@ -184,7 +171,6 @@ function getClubEvents($club_id) {
     }
 }
 
-// Handle club details request
 if (isset($_GET['club_id'])) {
     $club_id = intval($_GET['club_id']);
     $club_details = getClubDetails($club_id);
@@ -197,7 +183,6 @@ if (isset($_GET['club_id'])) {
     exit();
 }
 
-// Handle club events request
 if (isset($_GET['club_events'])) {
     $club_id = intval($_GET['club_events']);
     $club_events = getClubEvents($club_id);
@@ -228,7 +213,6 @@ if (isset($_GET['club_events'])) {
         -moz-osx-font-smoothing: grayscale;
       }
 
-      /* Background layers */
       .bg-gradient {
         position: fixed;
         inset: 0;
@@ -236,7 +220,6 @@ if (isset($_GET['club_events'])) {
         z-index: -2;
       }
 
-      /* Animated orbs */
       .orb {
         position: fixed;
         border-radius: 50%;
@@ -284,7 +267,6 @@ if (isset($_GET['club_events'])) {
         height: 100vh;
       }
 
-      /* Sidebar */
       .sidebar {
         width: 256px;
         height: 100vh;
@@ -411,7 +393,6 @@ if (isset($_GET['club_events'])) {
         line-height: 1.5;
       }
 
-      /* Main */
       .main-content {
         flex: 1;
         overflow-y: auto;
@@ -503,7 +484,6 @@ if (isset($_GET['club_events'])) {
         border-radius: 50%;
       }
 
-      /* Stats */
       .stats-grid {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
@@ -560,7 +540,6 @@ if (isset($_GET['club_events'])) {
         color: #9ca3af;
       }
 
-      /* Tabs */
       .content-area {
         max-width: 1280px;
         margin: 0 auto;
@@ -596,7 +575,6 @@ if (isset($_GET['club_events'])) {
       .tab-content { display: none; }
       .tab-content.active { display: block; }
 
-      /* Club Cards */
       .clubs-grid {
         display: grid;
         grid-template-columns: repeat(2, 1fr);
@@ -624,7 +602,6 @@ if (isset($_GET['club_events'])) {
       .club-badge { background: rgba(59, 130, 246, 0.2); color: #60a5fa; padding: 2px 8px; border-radius: 6px; font-size: 12px; }
 
       @media (max-width: 1024px) { .clubs-grid { grid-template-columns: 1fr; } }
-      /* Modal */
       .modal-backdrop {
         position: fixed;
         inset: 0;
@@ -735,7 +712,6 @@ if (isset($_GET['club_events'])) {
             </div>
         </div>
 
-        <!-- MAIN CONTENT -->
         <div class="main-content">
             <div class="header">
                 <div class="header-content">
@@ -753,23 +729,6 @@ if (isset($_GET['club_events'])) {
                                     <input type="text" name="q" class="search-input" value="<?php echo htmlspecialchars($search_query); ?>" placeholder="Rechercher des clubs..." />
                                 </form>
                             </div>
-                            <button class="notification-btn">
-                                <svg
-                                    width="24"
-                                    height="24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        stroke-width="2"
-                                        d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-                                    />
-                                </svg>
-                                <span class="notification-badge"></span>
-                            </button>
                         </div>
                     </div>
 
@@ -811,7 +770,6 @@ if (isset($_GET['club_events'])) {
                     <button class="tab-trigger" onclick="switchTab('member')">Membre de (<?php echo $member_of_clubs; ?>)</button>
                 </div>
 
-                <!-- All Tab -->
                 <div id="tab-all" class="tab-content active">
                     <div class="clubs-grid">
                         <?php
@@ -826,7 +784,6 @@ if (isset($_GET['club_events'])) {
                     </div>
                 </div>
 
-                <!-- Managing Tab -->
                 <div id="tab-managing" class="tab-content">
                     <div class="clubs-grid">
                         <?php
@@ -842,7 +799,6 @@ if (isset($_GET['club_events'])) {
                     </div>
                 </div>
 
-                <!-- Member Tab -->
                 <div id="tab-member" class="tab-content">
                     <div class="clubs-grid">
                         <?php
@@ -928,7 +884,6 @@ if (isset($_GET['club_events'])) {
         }
     </script>
     <?php if (!empty($join_success)) { echo "<script>alert('Attendez que votre demande soit approuvée');</script>"; } ?>
-    <!-- Club Details Modal -->
     <div id="clubModal" class="modal-backdrop" onclick="if(event.target===this) toggleModal(false)">
         <div class="modal">
             <div class="modal-header">
