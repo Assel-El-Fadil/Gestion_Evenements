@@ -1,6 +1,12 @@
 <?php
 session_start();
 require "../database.php";
+require "../email_config.php";
+require "vendor/autoload.php";
+
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\SMTP;
+use PHPMailer\PHPMailer\Exception;
 
 // Vérifier si l'utilisateur est connecté
 if (!isset($_SESSION["user_id"])) {
@@ -30,6 +36,86 @@ $user_department = $user['annee'] . ' - ' . $user['filiere'];
 
 $success_message = '';
 $error_message = '';
+
+// Function to get clubs where user is organizer
+function getOrganizerClubs($conn, $userId) {
+    $clubs = [];
+    $sql = "SELECT c.idClub, c.nom FROM Club c 
+            JOIN Adherence a ON c.idClub = a.idClub 
+            WHERE a.idUtilisateur = ? AND a.position = 'organisateur'
+            ORDER BY c.nom";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param('i', $userId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    while ($row = $result->fetch_assoc()) {
+        $clubs[] = $row;
+    }
+    $stmt->close();
+    return $clubs;
+}
+
+// Function to get events from clubs where user is organizer
+function getOrganizerEvents($conn, $userId) {
+    $events = [];
+    $sql = "SELECT e.idEvenement, e.titre, c.nom as club_nom 
+            FROM Evenement e 
+            JOIN Club c ON e.idClub = c.idClub 
+            JOIN Adherence a ON c.idClub = a.idClub 
+            WHERE a.idUtilisateur = ? AND a.position = 'organisateur'
+            ORDER BY c.nom, e.titre";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param('i', $userId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    while ($row = $result->fetch_assoc()) {
+        $events[] = $row;
+    }
+    $stmt->close();
+    return $events;
+}
+
+// Function to send email using PHPMailer
+function sendEmail($to, $subject, $message, $fromName = 'ClubConnect') {
+    $mail = new PHPMailer(true);
+    
+    try {
+        // Server settings
+        $mail->isSMTP();
+        $mail->Host = SMTP_HOST;
+        $mail->SMTPAuth = true;
+        $mail->Username = SMTP_USERNAME;
+        $mail->Password = SMTP_PASSWORD;
+        $mail->SMTPSecure = SMTP_ENCRYPTION === 'ssl' ? PHPMailer::ENCRYPTION_SMTPS : PHPMailer::ENCRYPTION_STARTTLS;
+        $mail->Port = SMTP_PORT;
+        
+        // Recipients
+        $mail->setFrom(FROM_EMAIL, $fromName);
+        
+        // Add recipients
+        if (is_array($to)) {
+            foreach ($to as $email) {
+                $mail->addAddress($email);
+            }
+        } else {
+            $mail->addAddress($to);
+        }
+        
+        // Content
+        $mail->isHTML(true);
+        $mail->Subject = $subject;
+        $mail->Body = nl2br($message);
+        
+        $mail->send();
+        return true;
+    } catch (Exception $e) {
+        return false;
+    }
+}
+
+// Get clubs and events where user is organizer
+$organizer_clubs = getOrganizerClubs($conn, $current_user_id);
+$organizer_events = getOrganizerEvents($conn, $current_user_id);
 
 // Load join requests for clubs managed by current user (organisateur)
 $requests = [];
@@ -130,6 +216,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Handle email sending
             $recipient = $_POST['recipient'] ?? '';
             $recipient_type = $_POST['recipient-type'] ?? 'custom';
+            $selected_club = $_POST['selected_club'] ?? '';
+            $selected_event = $_POST['selected_event'] ?? '';
             $subject = $_POST['subject'] ?? '';
             $message = $_POST['message'] ?? '';
         
@@ -138,38 +226,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             
             $recipients = [];
+            $conn = db_connect();
+            $conn->set_charset("utf8mb4");
             
             if ($recipient_type === 'custom' && !empty($recipient)) {
                 $recipients = array_map('trim', explode(',', $recipient));
             } else {
-                $conn = db_connect();
-                
-                $conn->set_charset("utf8mb4");
-                
                 switch ($recipient_type) {
                     case 'all-members':
-                        // Get all members of clubs where current user is organizer
+                        if (empty($selected_club)) {
+                            throw new Exception("Veuillez sélectionner un club.");
+                        }
+                        // Get all members of selected club
                         $sql = "SELECT DISTINCT u.email 
                                 FROM Utilisateur u 
                                 JOIN Adherence a ON u.idUtilisateur = a.idUtilisateur 
-                                WHERE a.idClub IN (
-                                    SELECT idClub FROM Adherence WHERE idUtilisateur = ? AND position = 'organisateur'
-                                )";
+                                WHERE a.idClub = ?";
                         $stmt = $conn->prepare($sql);
-                        $stmt->bind_param("i", $current_user_id);
+                        $stmt->bind_param("i", $selected_club);
                         break;
                         
                     case 'event-attendees':
-                        // Get attendees of events from clubs where current user is organizer
+                        if (empty($selected_event)) {
+                            throw new Exception("Veuillez sélectionner un événement.");
+                        }
+                        // Get attendees of selected event
                         $sql = "SELECT DISTINCT u.email 
                                 FROM Utilisateur u 
                                 JOIN Inscription i ON u.idUtilisateur = i.idUtilisateur 
-                                JOIN Evenement e ON i.idEvenement = e.idEvenement 
-                                WHERE e.idClub IN (
-                                    SELECT idClub FROM Adherence WHERE idUtilisateur = ? AND position = 'organisateur'
-                                )";
+                                WHERE i.idEvenement = ?";
                         $stmt = $conn->prepare($sql);
-                        $stmt->bind_param("i", $current_user_id);
+                        $stmt->bind_param("i", $selected_event);
                         break;
                         
                     default:
@@ -184,7 +271,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 
                 $stmt->close();
-                $conn->close();
                 
                 if (empty($recipients)) {
                     throw new Exception("Aucun destinataire trouvé pour le type sélectionné.");
@@ -202,15 +288,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new Exception("Aucune adresse email valide trouvée.");
             }
             
-            // Simulate email sending (replace with actual PHPMailer code if needed)
-            $success_message = "Email préparé pour envoi à " . count($valid_recipients) . " destinataires !<br>";
-            $success_message .= "<strong>Sujet:</strong> " . htmlspecialchars($subject) . "<br>";
-            $success_message .= "<strong>Destinataires:</strong> " . implode(', ', $valid_recipients) . "<br>";
-            $success_message .= "<strong>Message:</strong> " . nl2br(htmlspecialchars($message));
+            // Send email using PHPMailer
+            if (sendEmail($valid_recipients, $subject, $message, $user_name)) {
+                $success_message = "Email envoyé avec succès à " . count($valid_recipients) . " destinataires !<br>";
+                $success_message .= "<strong>Sujet:</strong> " . htmlspecialchars($subject) . "<br>";
+                $success_message .= "<strong>Destinataires:</strong> " . implode(', ', $valid_recipients);
+            } else {
+                throw new Exception("Erreur lors de l'envoi de l'email. Veuillez réessayer.");
+            }
             
-            // In a real implementation, you would use PHPMailer here
-            // $mail = new PHPMailer(true);
-            // ... email sending code ...
+            $conn->close();
         }
 
     } catch (Exception $e) {
@@ -557,7 +644,8 @@ function getFormValue($field) {
         }
 
         .form-group input,
-        .form-group textarea {
+        .form-group textarea,
+        .form-group select {
             width: 100%;
             padding: 0.75rem;
             background: rgba(0, 0, 0, 0.4);
@@ -568,6 +656,20 @@ function getFormValue($field) {
             font-size: 0.875rem;
             transition: all 0.2s;
             outline: none;
+        }
+
+        .form-group select {
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23ffffff' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.75rem center;
+            padding-right: 2.5rem;
+        }
+
+        .form-group select option {
+            background-color: rgba(17, 24, 39, 0.95);
+            color: #ffffff;
         }
 
         .form-group input::placeholder,
@@ -898,28 +1000,17 @@ function getFormValue($field) {
                 <div id="tab-email" class="tab-content active">
                     <form method="POST" class="card">
                         <div class="form-group">
-                            <label for="recipient">À</label>
-                            <input 
-                                type="text" 
-                                id="recipient" 
-                                name="recipient"
-                                placeholder="Entrez les adresses email (séparées par des virgules)"
-                                value="<?php echo getFormValue('recipient'); ?>"
-                            >
-                        </div>
-
-                        <div class="form-group">
                             <label>Envoyer à</label>
                             <div class="radio-group">
                                 <label class="radio-label">
                                     <input type="radio" name="recipient-type" value="all-members" class="radio-input"
                                         <?php echo (getFormValue('recipient-type') === 'all-members') ? 'checked' : ''; ?>>
-                                    <span>Tous les Membres de Mes Clubs</span>
+                                    <span>Tous les Membres d'un Club</span>
                                 </label>
                                 <label class="radio-label">
                                     <input type="radio" name="recipient-type" value="event-attendees" class="radio-input"
                                         <?php echo (getFormValue('recipient-type') === 'event-attendees') ? 'checked' : ''; ?>>
-                                    <span>Participants aux Événements de Mes Clubs</span>
+                                    <span>Participants à un Événement</span>
                                 </label>
                                 <label class="radio-label">
                                     <input type="radio" name="recipient-type" value="custom" class="radio-input"
@@ -927,6 +1018,46 @@ function getFormValue($field) {
                                     <span>Destinataires Personnalisés</span>
                                 </label>
                             </div>
+                        </div>
+
+                        <!-- Club Selection (for all-members) -->
+                        <div class="form-group" id="club-selection" style="display: none;">
+                            <label for="selected_club">Sélectionner un Club</label>
+                            <select id="selected_club" name="selected_club" class="form-group">
+                                <option value="">Choisissez un club</option>
+                                <?php foreach ($organizer_clubs as $club): ?>
+                                    <option value="<?php echo $club['idClub']; ?>" 
+                                        <?php echo (getFormValue('selected_club') == $club['idClub']) ? 'selected' : ''; ?>>
+                                        <?php echo htmlspecialchars($club['nom']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
+                        <!-- Event Selection (for event-attendees) -->
+                        <div class="form-group" id="event-selection" style="display: none;">
+                            <label for="selected_event">Sélectionner un Événement</label>
+                            <select id="selected_event" name="selected_event" class="form-group">
+                                <option value="">Choisissez un événement</option>
+                                <?php foreach ($organizer_events as $event): ?>
+                                    <option value="<?php echo $event['idEvenement']; ?>" 
+                                        <?php echo (getFormValue('selected_event') == $event['idEvenement']) ? 'selected' : ''; ?>>
+                                        <?php echo htmlspecialchars($event['titre'] . ' (' . $event['club_nom'] . ')'); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
+                        <!-- Custom Recipients (for custom) -->
+                        <div class="form-group" id="custom-recipients">
+                            <label for="recipient">À (adresses email séparées par des virgules)</label>
+                            <input 
+                                type="text" 
+                                id="recipient" 
+                                name="recipient"
+                                placeholder="Entrez les adresses email (séparées par des virgules)"
+                                value="<?php echo getFormValue('recipient'); ?>"
+                            >
                         </div>
 
                         <div class="form-group">
@@ -1022,26 +1153,41 @@ function getFormValue($field) {
 
         document.addEventListener('DOMContentLoaded', function() {
             const recipientInput = document.getElementById('recipient');
+            const clubSelection = document.getElementById('club-selection');
+            const eventSelection = document.getElementById('event-selection');
+            const customRecipients = document.getElementById('custom-recipients');
             const radioButtons = document.querySelectorAll('input[name="recipient-type"]');
             
-            radioButtons.forEach(radio => {
-                radio.addEventListener('change', function() {
-                    if (this.value === 'custom') {
-                        recipientInput.disabled = false;
-                        recipientInput.placeholder = 'Entrez les adresses email (séparées par des virgules)';
-                    } else {
-                        recipientInput.disabled = true;
-                        recipientInput.placeholder = 'Les destinataires seront sélectionnés automatiquement';
-                        recipientInput.value = '';
+            function toggleFormFields() {
+                const selectedRadio = document.querySelector('input[name="recipient-type"]:checked');
+                
+                // Hide all conditional fields
+                clubSelection.style.display = 'none';
+                eventSelection.style.display = 'none';
+                customRecipients.style.display = 'none';
+                
+                // Show relevant field based on selection
+                if (selectedRadio) {
+                    switch (selectedRadio.value) {
+                        case 'all-members':
+                            clubSelection.style.display = 'block';
+                            break;
+                        case 'event-attendees':
+                            eventSelection.style.display = 'block';
+                            break;
+                        case 'custom':
+                            customRecipients.style.display = 'block';
+                            break;
                     }
-                });
+                }
+            }
+            
+            radioButtons.forEach(radio => {
+                radio.addEventListener('change', toggleFormFields);
             });
             
-            const selectedRadio = document.querySelector('input[name="recipient-type"]:checked');
-            if (selectedRadio && selectedRadio.value !== 'custom') {
-                recipientInput.disabled = true;
-                recipientInput.placeholder = 'Les destinataires seront sélectionnés automatiquement';
-            }
+            // Initialize form fields on page load
+            toggleFormFields();
         });
     </script>
 </body>

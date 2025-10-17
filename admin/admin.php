@@ -201,7 +201,7 @@ if (!empty($search_query)) {
     $param_types .= 'ssss';
 }
 
-$where_clause = !empty($where_conditions) ? 'WHERE ' . implode(' AND ', $where_conditions) : '';
+$where_clause = !empty($where_conditions) ? 'WHERE ' . implode(' AND ', $where_conditions) . ' AND idUtilisateur != 1' : 'WHERE idUtilisateur != 1';
 
 // Count total users for pagination
 $count_sql = "SELECT COUNT(*) as total FROM Utilisateur $where_clause";
