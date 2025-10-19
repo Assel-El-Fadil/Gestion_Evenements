@@ -19,11 +19,6 @@ ClubConnect est une plateforme web complète de gestion des clubs étudiants qui
 - **Communication** : Système de messagerie intégré
 - **Génération de certificats** : Certificats automatiques pour les participants
 
-### Pour les Administrateurs
-- **Gestion des utilisateurs** : Administration complète des comptes utilisateurs
-- **Gestion des clubs** : Supervision des clubs et de leurs activités
-- **Statistiques globales** : Vue d'ensemble des activités de la plateforme
-
 ## 🛠️ Technologies Utilisées
 
 - **Backend** : PHP 7.4+
