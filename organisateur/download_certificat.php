@@ -22,7 +22,7 @@ $sql = "SELECT
             e.titre AS evenement_titre,
             e.description AS evenement_description,
             c.nom AS club_nom,
-            e.date AS date_evenement,
+            e.dateEvenement AS date_evenement,
             e.lieu,
             e.nbrParticipants,
             e.statut

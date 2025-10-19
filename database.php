@@ -62,6 +62,34 @@ function get_upcoming_events($limit = 5) {
     return $events;
 }
 
+function get_user_managed_clubs($user_id, $limit = 5) {
+    $conn = db_connect();
+    
+    $sql = "SELECT c.*
+            FROM Club c 
+            NATURAL JOIN Adherence a
+            WHERE a.idUtilisateur = ? AND a.position = 'organisateur'
+            ORDER BY c.nom ASC 
+            LIMIT ?";
+    
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        throw new Exception("Erreur de préparation: " . $conn->error);
+    }
+    
+    $stmt->bind_param("ii", $user_id, $limit);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    $clubs = [];
+    while ($row = $result->fetch_assoc()) {
+        $clubs[] = $row;
+    }
+    
+    $stmt->close();
+    return $clubs;
+}
+
 function get_user_clubs($user_id, $limit = 2) {
     $conn = db_connect();
     
