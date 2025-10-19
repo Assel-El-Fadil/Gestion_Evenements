@@ -79,7 +79,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $events_month_sql = "SELECT COUNT(*) as count FROM Evenement 
                     WHERE MONTH(dateEvenement) = MONTH(CURRENT_DATE()) 
-                    AND YEAR(dateEvenement) = YEAR(CURRENT_DATE())";
+                    AND YEAR(dateEvenement) = YEAR(CURRENT_DATE())
+                    AND DAY(dateEvenement) > DAY(Current_DATE())";
 $result = $conn->query($events_month_sql);
 $stats['events_this_month'] = $result->fetch_assoc()['count'];
 

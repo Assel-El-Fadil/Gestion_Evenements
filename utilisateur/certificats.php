@@ -10,12 +10,68 @@ if (!isset($_SESSION["user_id"])) {
 $current_user_id = $_SESSION["user_id"];
 $conn = db_connect();
 
+function generateCertificatesForCompletedEvents($conn, $user_id) {
+    $sql_check = "SELECT DISTINCT i.idEvenement, e.titre, e.dateEvenement, c.nom as club_nom
+                  FROM Inscription i
+                  JOIN Evenement e ON i.idEvenement = e.idEvenement
+                  JOIN Club c ON e.idClub = c.idClub
+                  WHERE i.idUtilisateur = ? 
+                  AND e.dateEvenement < CURDATE()
+                  AND NOT EXISTS (
+                      SELECT 1 FROM Attestation a 
+                      WHERE a.idUtilisateur = i.idUtilisateur 
+                      AND a.idEvenement = i.idEvenement
+                  )";
+    
+    $stmt_check = $conn->prepare($sql_check);
+    if (!$stmt_check) {
+        return false;
+    }
+    
+    $stmt_check->bind_param("i", $user_id);
+    if (!$stmt_check->execute()) {
+        $stmt_check->close();
+        return false;
+    }
+    
+    $result_check = $stmt_check->get_result();
+    $events_to_certify = [];
+    
+    while ($row = $result_check->fetch_assoc()) {
+        $events_to_certify[] = $row;
+    }
+    $stmt_check->close();
+    
+    foreach ($events_to_certify as $event) {
+        $sql_insert = "INSERT INTO Attestation (idUtilisateur, idEvenement, dateGeneration, objet) 
+                       VALUES (?, ?, NOW(), ?)";
+        
+        $stmt_insert = $conn->prepare($sql_insert);
+        if ($stmt_insert) {
+            $objet = "Certificat de participation à l'événement: " . $event['titre'];
+            $stmt_insert->bind_param("iis", $user_id, $event['idEvenement'], $objet);
+            $stmt_insert->execute();
+            $stmt_insert->close();
+        }
+    }
+    
+    return true;
+}
+
+generateCertificatesForCompletedEvents($conn, $current_user_id);
+
 $user_sql = "SELECT nom, prenom, annee, filiere FROM Utilisateur WHERE idUtilisateur = ?";
 $stmt_user = $conn->prepare($user_sql);
+if (!$stmt_user) {
+    die("Erreur de préparation de la requête utilisateur: " . $conn->error);
+}
 $stmt_user->bind_param("i", $current_user_id);
-$stmt_user->execute();
+if (!$stmt_user->execute()) {
+    die("Erreur d'exécution de la requête utilisateur: " . $stmt_user->error);
+}
 $result_user = $stmt_user->get_result();
 $user = $result_user->fetch_assoc();
+$stmt_user->close();
 
 if (!$user) {
     header("Location: ../signin.php");
@@ -46,48 +102,78 @@ $sql = "SELECT
         ORDER BY a.dateGeneration DESC";
 
 $stmt = $conn->prepare($sql);
+if (!$stmt) {
+    die("Erreur de préparation de la requête: " . $conn->error);
+}
+
 $stmt->bind_param("i", $current_user_id);
-$stmt->execute();
+if (!$stmt->execute()) {
+    die("Erreur d'exécution de la requête: " . $stmt->error);
+}
+
 $result = $stmt->get_result();
 $attestations = [];
 
-if ($result) {
-    while ($row = $result->fetch_assoc()) {
-        $attestations[] = $row;
-    }
+while ($row = $result->fetch_assoc()) {
+    $attestations[] = $row;
 }
+$stmt->close();
 
 $sql_total_certificats = "SELECT COUNT(*) as total FROM Attestation WHERE idUtilisateur = ?";
 $stmt_total = $conn->prepare($sql_total_certificats);
+if (!$stmt_total) {
+    die("Erreur de préparation de la requête total: " . $conn->error);
+}
 $stmt_total->bind_param("i", $current_user_id);
-$stmt_total->execute();
+if (!$stmt_total->execute()) {
+    die("Erreur d'exécution de la requête total: " . $stmt_total->error);
+}
 $result_total = $stmt_total->get_result();
 $total_certificats = $result_total->fetch_assoc()['total'] ?? 0;
+$stmt_total->close();
 
 $sql_certificats_mois = "SELECT COUNT(*) as total_mois FROM Attestation 
                          WHERE idUtilisateur = ? AND MONTH(dateGeneration) = MONTH(CURRENT_DATE()) 
                          AND YEAR(dateGeneration) = YEAR(CURRENT_DATE())";
 $stmt_mois = $conn->prepare($sql_certificats_mois);
+if (!$stmt_mois) {
+    die("Erreur de préparation de la requête mois: " . $conn->error);
+}
 $stmt_mois->bind_param("i", $current_user_id);
-$stmt_mois->execute();
+if (!$stmt_mois->execute()) {
+    die("Erreur d'exécution de la requête mois: " . $stmt_mois->error);
+}
 $result_mois = $stmt_mois->get_result();
 $certificats_mois = $result_mois->fetch_assoc()['total_mois'] ?? 0;
+$stmt_mois->close();
 
 $sql_events_semestre = "SELECT COUNT(DISTINCT idEvenement) as total_events 
                         FROM Inscription 
                         WHERE idUtilisateur = ? AND dateInscription >= DATE_SUB(CURRENT_DATE(), INTERVAL 6 MONTH)";
 $stmt_events = $conn->prepare($sql_events_semestre);
+if (!$stmt_events) {
+    die("Erreur de préparation de la requête events: " . $conn->error);
+}
 $stmt_events->bind_param("i", $current_user_id);
-$stmt_events->execute();
+if (!$stmt_events->execute()) {
+    die("Erreur d'exécution de la requête events: " . $stmt_events->error);
+}
 $result_events = $stmt_events->get_result();
 $events_semestre = $result_events->fetch_assoc()['total_events'] ?? 0;
+$stmt_events->close();
 
 $sql_clubs_actifs = "SELECT COUNT(DISTINCT idClub) as total_clubs FROM Adherence WHERE idUtilisateur = ?";
 $stmt_clubs = $conn->prepare($sql_clubs_actifs);
+if (!$stmt_clubs) {
+    die("Erreur de préparation de la requête clubs: " . $conn->error);
+}
 $stmt_clubs->bind_param("i", $current_user_id);
-$stmt_clubs->execute();
+if (!$stmt_clubs->execute()) {
+    die("Erreur d'exécution de la requête clubs: " . $stmt_clubs->error);
+}
 $result_clubs = $stmt_clubs->get_result();
 $clubs_actifs = $result_clubs->fetch_assoc()['total_clubs'] ?? 0;
+$stmt_clubs->close();
 
 $conn->close();
 ?>
@@ -698,6 +784,14 @@ $conn->close();
                     <span>Mes Événements</span>
                 </a>
 
+                <a href="createevent.php" class="nav-item">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    <span>Créer Événement</span>
+                </a>
+
                 <a href="MyClubs.php" class="nav-item">
                     <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
@@ -706,6 +800,14 @@ $conn->close();
                         <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
                     </svg>
                     <span>Mes Clubs</span>
+                </a>
+
+                <a href="communication.php" class="nav-item">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                        <polyline points="22,6 12,13 2,6"></polyline>
+                    </svg>
+                    <span>Communications</span>
                 </a>
 
                 <a href="certificats.php" class="nav-item nav-item-active">

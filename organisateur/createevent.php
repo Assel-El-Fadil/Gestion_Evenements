@@ -8,6 +8,7 @@ if (!isset($_SESSION["user_id"])) {
 }
 
 $current_user_id = $_SESSION["user_id"];
+$user_clubs = get_user_managed_clubs($current_user_id, 10);
 
 $conn = db_connect();
 $user_sql = "SELECT nom, prenom, annee, filiere FROM Utilisateur WHERE idUtilisateur = ?";
@@ -41,7 +42,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $lieu = $conn->real_escape_string($_POST['event_location'] ?? '');
         $capacite = intval($_POST['event_capacity'] ?? 0);
         $idClub = intval($_POST['event_club'] ?? 1);
-        
         if (empty($titre) || empty($description) || empty($date) || empty($lieu)) {
             throw new Exception("Veuillez remplir tous les champs obligatoires.");
         }
@@ -111,8 +111,6 @@ function getFormattedDate($dateField) {
     }
     return 'Sélectionner une date';
 }
-
-$user_clubs = get_user_clubs($current_user_id, 10);
 ?>
 
 <html lang="fr">
