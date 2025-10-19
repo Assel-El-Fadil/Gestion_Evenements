@@ -26,7 +26,7 @@ ClubConnect est une plateforme web complète de gestion des clubs étudiants qui
 - **Frontend** : HTML5, CSS3, JavaScript (Vanilla)
 - **PDF** : FPDF pour la génération de certificats
 - **Email** : PHPMailer pour l'envoi d'emails
-- **Serveur** : Apache (XAMPP)
+- **Serveur** : Apache (XAMPP) / Deployé sur platforme Infinityfree
 
 ## 📋 Prérequis
 
@@ -34,34 +34,6 @@ ClubConnect est une plateforme web complète de gestion des clubs étudiants qui
 - MySQL 5.7 ou supérieur
 - Apache Server
 - XAMPP (recommandé pour le développement)
-
-## 🚀 Installation
-
-### 1. Cloner le projet
-```bash
-git clone [url-du-repo]
-cd ClubConnect
-```
-
-### 2. Configuration de la base de données
-1. Créez une base de données MySQL nommée `clubconnect`
-2. Importez le fichier SQL fourni (si disponible)
-3. Configurez les paramètres de connexion dans `configure.php`
-
-### 3. Configuration des emails
-Modifiez le fichier `email_config.php` avec vos paramètres SMTP :
-```php
-define('SMTP_HOST', 'votre-serveur-smtp');
-define('SMTP_USERNAME', 'votre-email');
-define('SMTP_PASSWORD', 'votre-mot-de-passe');
-define('SMTP_PORT', 587);
-define('SMTP_ENCRYPTION', 'tls');
-```
-
-### 4. Configuration XAMPP
-1. Placez le projet dans le dossier `htdocs` de XAMPP
-2. Démarrez Apache et MySQL
-3. Accédez à `http://localhost/ClubConnect`
 
 ## 📁 Structure du Projet
 
@@ -103,7 +75,8 @@ ClubConnect/
 - **Inscription** : Inscriptions des utilisateurs aux événements
 - **Attestation** : Certificats de participation générés automatiquement
 - **Adherence** : Appartenance des utilisateurs aux clubs
-- **Communication** : Messages entre utilisateurs
+- **Email** : Messages entre utilisateurs
+- **Requête** : Requêtes d'adhésion au clubs
 
 ## 🔐 Système d'Authentification
 
@@ -115,7 +88,6 @@ ClubConnect/
 ## 📧 Système d'Emails
 
 - **Vérification d'inscription** : Code de vérification envoyé par email
-- **Notifications** : Notifications automatiques pour les événements
 - **Communication** : Système de messagerie interne
 
 ## 📄 Génération de Certificats
@@ -150,17 +122,12 @@ Le système génère automatiquement des certificats PDF pour les participants a
 
 ### Problèmes Courants
 
-1. **Certificats non générés**
-   - Vérifiez que les événements sont terminés (date passée)
-   - Assurez-vous que l'utilisateur était inscrit à l'événement
-   - Consultez les logs PHP pour les erreurs
-
-2. **Erreurs de connexion base de données**
+1. **Erreurs de connexion base de données**
    - Vérifiez les paramètres dans `configure.php`
    - Assurez-vous que MySQL est démarré
    - Vérifiez les permissions de la base de données
 
-3. **Emails non envoyés**
+2. **Emails non envoyés**
    - Vérifiez la configuration SMTP dans `email_config.php`
    - Testez avec un autre fournisseur email si nécessaire
 
@@ -185,29 +152,9 @@ Le système génère automatiquement des certificats PDF pour les participants a
 3. Consultez "Mes Événements" pour suivre vos participations
 4. Téléchargez vos certificats après la fin des événements
 
-## 🤝 Contribution
-
-1. Fork le projet
-2. Créez une branche pour votre fonctionnalité (`git checkout -b feature/nouvelle-fonctionnalite`)
-3. Committez vos changements (`git commit -am 'Ajout d'une nouvelle fonctionnalité'`)
-4. Push vers la branche (`git push origin feature/nouvelle-fonctionnalite`)
-5. Ouvrez une Pull Request
-
-## 📄 Licence
-
-Ce projet est sous licence MIT. Voir le fichier `LICENSE` pour plus de détails.
-
 ## 👥 Auteurs
 
 - **Équipe de développement** - Développement initial
-- **Contributeurs** - Améliorations et corrections
-
-## 📞 Support
-
-Pour toute question ou problème :
-- Ouvrez une issue sur GitHub
-- Contactez l'équipe de développement
-- Consultez la documentation technique
 
 ## 🔮 Roadmap
 
